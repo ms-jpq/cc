@@ -1,0 +1,6 @@
+{:host "localhost"
+ :launch-browser false
+ :repl-verbose true
+ :static-dir ["."]
+ :watch "src"
+ :watch-fn (fn [] (println "built!"))}

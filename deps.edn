@@ -1,0 +1,11 @@
+{:paths ["src"]
+ :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}}
+ :aliases {:dev {:extra-deps {com.bhauman/figwheel-main {:mvn/version "RELEASE"}}
+                 :main-opts ["--main" "cljs.main"
+                             "--compile-opts" "dev.co.edn"
+                             "--repl-opts" "repl.edn"
+                             "--compile" "site.index"
+                             "--repl"]}
+           :build {:main-opts ["--main" "cljs.main"
+                               "--compile-opts" "build.co.edn"
+                               "--compile" "index"]}}}

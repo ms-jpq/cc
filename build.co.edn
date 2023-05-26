@@ -1,0 +1,4 @@
+{:optimizations :advanced
+ :source-map true
+ :target :bundle
+ :verbose true}
