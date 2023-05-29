@@ -1,0 +1,4 @@
+{:css-dirs ["css"]
+ :open-url false
+ ; :pprint-config true
+ :watch-dirs ["cljs"]}

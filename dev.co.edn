@@ -1,2 +1,2 @@
-{:preloads [site.dev]
+{:preloads [dev.preload]
  :pretty-print true}
