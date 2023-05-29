@@ -1,4 +1,4 @@
-{:paths ["cljs" "target"]
+{:paths ["clj" "target"]
  :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}}
  :aliases {:dev {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
                               com.bhauman/figwheel-main {:mvn/version "RELEASE"}}

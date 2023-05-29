@@ -3,3 +3,4 @@
 .lsp/
 out/
 target/
+package-lock.json
