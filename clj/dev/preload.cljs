@@ -1,3 +1,5 @@
-(ns dev.preload)
+(ns dev.preload
+  (:require [cljs.pprint :as p]))
 
-(println "-- Preload -- ")
+(. js/console clear)
+(p/pprint "-- Preload -- ")
