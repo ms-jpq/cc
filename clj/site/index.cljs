@@ -27,4 +27,3 @@
          [:h1 (apply str (reverse "Hello World!"))]
          [:s "This is a paragraph."]
          [:p "This is another paragraph."]])
-
