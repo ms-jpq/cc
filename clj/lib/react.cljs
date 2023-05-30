@@ -1,5 +1,6 @@
 (ns lib.react
-  (:require [clojure.pprint :as p]
+  (:require [lib.prelude :refer [long-zip]]
+            [clojure.pprint :as p]
             [clojure.string :as s]))
 
 (def ^:private re-kw #"(^|#|\.)(\w+)")
@@ -17,14 +18,6 @@
   (-> kw
       (name)
       (s/replace re-case #(let [[_ m] %] (-> m str s/capitalize)))))
-
-(defn- long-zip [sentenial & seqs]
-  (let [rep (repeat sentenial)
-        eof? (partial identical? sentenial)]
-    (->> seqs
-         (map #(lazy-cat % rep))
-         (apply map vector)
-         (take-while #(not (every? eof? %))))))
 
 (defn- parse-kw [kw]
   {:pre [(keyword? kw)]}
@@ -91,16 +84,16 @@
           :let [js-key (js-case old-key)]]
     (js-delete target js-key)))
 
-(declare do-recon)
+(declare do-reconcile)
 
-(defn- do-recon-children [el {old-el :el :as old-child}  new-child]
+(defn- do-recon-children [parent-el {old-el :el :as old-child}  new-child]
   (cond
     (nil? old-child) (let [{new-el :el :as drawn}
                            (do-dom new-child)]
-                       (.appendChild el new-el)
+                       (.appendChild parent-el new-el)
                        drawn)
     (nil? new-child) (do (.remove old-el) nil)
-    :else (do-recon old-child new-child)))
+    :else (do-reconcile old-child new-child)))
 
 (defn- do-rec [el old-children new-children]
   (let [zipped (long-zip nil old-children new-children)
@@ -108,17 +101,15 @@
                               (map (juxt :key identity))
                               (remove (comp nil? first))
                               (into {})))]
-    (for [[old-child new-child] zipped
-          :let [{old-key :key} old-child
-                {new-key :key} new-child]]
+    (for [[{old-key :key :as old-child} {new-key :key :as new-child}] zipped]
       (cond
         (= old-key new-key) (do-recon-children el old-child new-child)
         :else (if-let [match (get @old-index new-key)]
-                (do-recon match new-child)
+                (do-reconcile match new-child)
                 (do-recon-children el old-child new-child))))))
 
-(defn- do-recon [{old-txt :txt old-tag :tag old-el :el :as old}
-                 {new-txt :txt new-tag :tag  :as new}]
+(defn- do-reconcile [{old-txt :txt old-tag :tag old-el :el :as old}
+                     {new-txt :txt new-tag :tag :as new}]
   {:pre [(not (nil? old)) (not (nil? new))]}
   (cond
     (or old-txt new-txt) (if (= old-txt new-txt)
@@ -143,8 +134,9 @@
               (assoc new :children children :el old-el)))))
 
 (defn rend [root v-init]
+  {:pre [(-> root type (isa? js/HTMLElement))]}
   (let [v-i (->> v-init parse do-dom)
         v-dom (atom v-i)]
     (.appendChild root (:el @v-dom))
     (fn [v-next]
-      (->> v-next parse (swap! v-dom do-recon)))))
+      (->> v-next parse (swap! v-dom do-reconcile)))))
