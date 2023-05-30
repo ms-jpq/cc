@@ -10,10 +10,10 @@
   (cond (nil? x) :nil
         (string? x) :str
         (map? x) :map
-        (or (seq? x) (vector? x)) :seq))
+        ((some-fn vector? seq?) x) :seq))
 
 (defn- js-case [kw]
-  {:pre [(keyword? kw)]}
+  {:pre (keyword? kw)}
   (-> kw
       (name)
       (s/replace re-case #(let [[_ m] %] (-> m str s/capitalize)))))
@@ -21,10 +21,10 @@
 (defn- long-zip [bottom & seqs]
   (let [len (apply max (map count seqs))
         longer (map #(take len (concat % (repeat bottom))) seqs)]
-    (apply map vector (range) longer)))
+    (apply map vector longer)))
 
 (defn- parse-kw [kw]
-  {:pre [(keyword? kw)]}
+  {:pre (keyword? kw)}
   (let [key (name kw)
         [[_ _ tag] & groups] (re-seq re-kw key)
         grouped (for [[k v] (group-by second groups)
@@ -35,9 +35,18 @@
      :id id
      :class-name class-name}))
 
+(defn- do-draw [target props]
+  (doseq [[key val] props
+          :let [js-key (js-case key)]]
+    (if (nil? val)
+      (js-delete target js-key)
+      (aset target js-key val))))
+
 (defmulti parse discrim)
 (defmethod parse :nil [_] nil)
-(defmethod parse :str [s] {:txt s})
+(defmethod parse :str [s]
+  {:txt s
+   :el (delay (. js/document createTextNode s))})
 (defmethod parse :seq [[x & xs :as xss]]
   (if (not (keyword? x))
     (->> xss (map parse) (remove empty?))
@@ -46,33 +55,20 @@
                                         #(if (map? %) :r-props :r-children)
                                         xs)
           {:keys [tag key style] :as props} (->> r-props (apply merge-with into) (merge kw-props))
-          children (->> r-children (map parse) (remove empty?) (into []))]
+          children (->> r-children (map parse) (remove empty?))]
       {:tag tag
        :key key
        :props (dissoc props :tag :key :style)
        :style style
-       :children children})))
-
-(defn- do-draw [target props]
-  (doseq [[key val] props
-          :let [js-key (js-case key)]]
-    (if (nil? val)
-      (js-delete target js-key)
-      (aset target js-key val))))
-
-(defmulti draw discrim)
-(defmethod draw :seq [s] (map draw s))
-(defmethod draw :map [{:keys [txt tag props style children]}]
-  (if txt
-    (. js/document createTextNode txt)
-    (let [el (. js/document createElement tag)
-          el-style (.-style el)]
-      (do-draw el props)
-      (do-draw el-style style)
-      (doseq [child children
-              :let [c (draw child)]]
-        (. el appendChild c))
-      el)))
+       :children children
+       :el (delay (let [el (. js/document createElement tag)
+                        el-style (.-style el)]
+                    (do-draw el props)
+                    (do-draw el-style style)
+                    (doseq [child children
+                            :let [c @(:el child)]]
+                      (.appendChild el c))
+                    el))})))
 
 (defn- do-recon [target old-props new-props]
   (doseq [[new-key new-val] new-props
@@ -87,73 +83,57 @@
           :let [js-key (js-case old-key)]]
     (js-delete target js-key)))
 
-(defn- recon [{old-txt :txt old-tag :tag :as old}
-              {new-txt :txt new-tag :tag :as new}]
+(declare recon)
+
+(defn- do-re [el {old-el :el :as old-child} {new-el :el :as new-child}]
+  (cond
+    (nil? old-child) (do (.appendChild el @new-el) new-child)
+    (nil? new-child) (do (.remove @old-el) nil)
+    :else (recon old-child new-child)))
+
+(defn- do-rec [el old-children new-children]
+  (let [zipped (long-zip nil old-children new-children)
+        old-index (if (contains? (first new-children) :key)
+                    (->> old-children
+                         (map (juxt :key identity))
+                         (remove (comp nil? first))
+                         (into {}))
+                    {})]
+    (for [[old-child new-child] zipped
+          :let [{old-key :key} old-child
+                {new-key :key} new-child]]
+      (cond
+        (= old-key new-key) (do-re el old-child new-child)
+        :else (if-let [match (get old-index new-key)]
+                (recon match new-child)
+                (do-re el old-child new-child))))))
+
+(defn- recon [{old-txt :txt old-tag :tag old-el :el :as old}
+              {new-txt :txt new-tag :tag new-el :el :as new}]
   {:pre [(not (nil? old)) (not (nil? new))]}
   (cond
-    (or old-txt new-txt) (if (= old-txt new-txt) old (assoc new :el (draw new)))
+    (or old-txt new-txt) (if (= old-txt new-txt)
+                           old
+                           (do (.replaceWith @old-el @new-el)
+                               new))
 
-    (not (= old-tag new-tag)) (assoc new :el (draw new))
-
-    :else (let [{:keys [el] old-props :props old-style :style old-children :children} old
+    (not (= old-tag new-tag)) (do (.replaceWith @old-el @new-el)
+                                  new)
+    :else (let [{old-el :el old-props :props old-style :style old-children :children} old
                 {new-props :props new-style :style new-children :children} new
+                el @old-el
                 el-style (.-style el)]
             (do-recon el old-props new-props)
             (do-recon el-style old-style new-style)
-            (let [zipped (long-zip nil old-children new-children)
-                  keyed (if (contains? (first new-children) :key)
-                          (->> old-children
-                               (map-indexed #(vector (:key %2) [%1 %2]))
-                               (remove (comp nil? first))
-                               (into {}))
-                          {})
-                  c-iter (for [[idx old-child new-child] zipped
-                               :let [{old-key :key} old-child
-                                     {new-key :key} new-child]]
-                           (cond
-                             (= old-key new-key) (cond
-                                                   (nil? old-child) (let [new-el (draw new-child)]
-                                                                      (assoc new-child :el new-el)
-                                                                      (.appendChild el new-el))
-                                                   (nil? new-child) (do
-                                                                      (.remove (:el old-child))
-                                                                      nil)
-                                                   :else (recon old-child new-child))
-                             :else (assert false)))
-                  children (doall (remove nil? c-iter))]
-              (assoc new :el el :children children)))))
+            (let [children (->>
+                            (do-rec el old-children new-children)
+                            (remove nil?)
+                            (doall))]
+              (assoc new :children children :el old-el)))))
 
-(defn rend [v-init]
-  {:pre [(map? v-init)]}
-  (let [v-dom (atom (assoc v-init :el (draw v-init)))]
+(defn rend [root v-init]
+  (let [v-i (parse v-init)
+        v-dom (atom v-i)]
+    (.appendChild root @(:el @v-dom))
     (fn [v-next]
-      (->> v-next
-           (swap! v-dom recon)
-           (:el)))))
-
-(def spec [:a#asd.c#zxc.d
-           {:key 2}
-           {:onclick #(. js/console log %)}
-           "abc"
-           [[] []]
-           [nil]
-           nil nil
-           "wwwwwwwwww"
-           {:style {:background-color "green"}} {:style {:color "pink"}}
-           {:style {:color nil}}
-           [:h1 "big-txt" {:key 9}]
-           [:h3 "somt-txt"]
-           {:data-stdin "somthing funny"}])
-
-(. js/console clear)
-(def p (parse spec))
-(def r (rend p))
-(def it (r p))
-
-(. js/console log "---------------------")
-(p/pprint p)
-(. js/console log it)
-
-(p/pprint (if "" 1 2))
-
-; (-> js/document (.  -body) (. appendChild it))
+      (->> v-next parse (swap! v-dom recon)))))
