@@ -1,4 +1,6 @@
-{:optimizations :advanced
- :source-map true
+{:bundle-cmd {:none ["false"]
+              :default ["make" "bundle"]}
+ :optimizations :advanced
+ :source-map "out/main.js.map"
  :target :bundle
  :verbose true}

@@ -1,5 +1,3 @@
-(ns dev.preload
-  (:require [cljs.pprint :as p]))
+(ns dev.preload)
 
-(. js/console clear)
-(p/pprint "-- Preload -- ")
+(set! js/globalThis -DEBUG true)

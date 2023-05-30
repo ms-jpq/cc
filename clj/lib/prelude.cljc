@@ -1,5 +1,6 @@
 (ns lib.prelude
-  (:require [clojure.string :as s]))
+  (:require
+   [clojure.string :as s]))
 
 (defn long-zip [sentenial & seqs]
   (let [rep (repeat sentenial)

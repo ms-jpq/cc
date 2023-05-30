@@ -1,11 +1,18 @@
 {:paths ["clj" "target"]
  :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}}
- :aliases {:dev {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
+ :aliases {:build {:main-opts ["--main" "cljs.main"
+                               "--compile-opts" "build.co.edn"
+                               "--compile" "site.index"]}
+           :lint {:deps {clj-kondo/clj-kondo {:mvn/version "RELEASE"}}
+                  :main-opts ["-m" "clj-kondo.main"
+                              "--parallel"
+                              "--fail-level" "error"
+                              "--lint" "clj"]}
+           :fmt {:deps {dev.weavejester/cljfmt {:mvn/version "RELEASE"}}
+                 :ns-default cljfmt.tool}
+           :dev {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
                               com.bhauman/figwheel-main {:mvn/version "RELEASE"}}
                  :main-opts ["--main" "figwheel.main"
                              "--compile-opts" "dev.co.edn"
                              "--compile" "site.index"
-                             "--repl"]}
-           :build {:main-opts ["--main" "cljs.main"
-                               "--compile-opts" "build.co.edn"
-                               "--compile" "site.index"]}}}
+                             "--repl"]}}}
