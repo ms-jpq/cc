@@ -1,10 +1,9 @@
 (ns lib.react
-  (:require [lib.prelude :refer [long-zip]]
+  (:require [lib.prelude :refer [long-zip js-case]]
             [clojure.pprint :as p]
             [clojure.string :as s]))
 
 (def ^:private re-kw #"(^|#|\.)(\w+)")
-(def ^:private re-case #"-(\w)")
 (def ^:private v-map {"#" [:id "-"] "." [:class-name " "]})
 
 (defn- discrim [x]
@@ -12,12 +11,6 @@
         (string? x) :str
         (map? x) :map
         ((some-fn vector? seq?) x) :seq))
-
-(defn- js-case [kw]
-  {:pre [(keyword? kw)]}
-  (-> kw
-      (name)
-      (s/replace re-case #(let [[_ m] %] (-> m str s/capitalize)))))
 
 (defn- parse-kw [kw]
   {:pre [(keyword? kw)]}
@@ -35,7 +28,7 @@
 (defmethod parse :nil [_] nil)
 (defmethod parse :str [s] {:txt s})
 (defmethod parse :seq [[x & xs :as xss]]
-  (if (not (keyword? x))
+  (if-not (keyword? x)
     (->> xss (map parse) (remove empty?))
     (let [kw-props (parse-kw x)
           {:keys [r-props r-children]} (group-by
@@ -58,7 +51,7 @@
 
 (defn- do-dom [{:keys [txt tag props style children] :as tree}]
   {:pre [(not (nil? tree))]}
-  (if (not (nil? txt))
+  (if-not (nil? txt)
     (->> txt (. js/document createTextNode)
          (assoc tree :el))
     (let [el (. js/document createElement tag)
@@ -108,19 +101,20 @@
                 (do-reconcile match new-child)
                 (do-recon-children el old-child new-child))))))
 
+(defn- replace-child [old-el new]
+  (let [{new-el :el :as drawn} (do-dom new)]
+    (.replaceWith old-el new-el)
+    drawn))
+
 (defn- do-reconcile [{old-txt :txt old-tag :tag old-el :el :as old}
                      {new-txt :txt new-tag :tag :as new}]
   {:pre [(not (nil? old)) (not (nil? new))]}
   (cond
     (or old-txt new-txt) (if (= old-txt new-txt)
                            old
-                           (let [{new-el :el :as drawn} (do-dom new)]
-                             (.replaceWith old-el new-el)
-                             drawn))
+                           (replace-child old-el new))
 
-    (not (= old-tag new-tag)) (let [{new-el :el :as drawn} (do-dom new)]
-                                (.replaceWith old-el new-el)
-                                drawn)
+    (not (= old-tag new-tag)) (replace-child old-el new)
 
     :else (let [{old-props :props old-style :style old-children :children} old
                 {new-props :props new-style :style new-children :children} new
