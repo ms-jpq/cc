@@ -18,10 +18,13 @@
       (name)
       (s/replace re-case #(let [[_ m] %] (-> m str s/capitalize)))))
 
-(defn- long-zip [bottom & seqs]
-  (let [len (apply max (map count seqs))
-        longer (map #(take len (concat % (repeat bottom))) seqs)]
-    (apply map vector longer)))
+(defn- long-zip [sentenial & seqs]
+  (let [rep (repeat sentenial)
+        eof? (partial identical? sentenial)]
+    (->> seqs
+         (map #(lazy-cat % rep))
+         (apply map vector)
+         (take-while #(not (every? eof? %))))))
 
 (defn- parse-kw [kw]
   {:pre (keyword? kw)}
@@ -119,6 +122,7 @@
 
     (not (= old-tag new-tag)) (do (.replaceWith @old-el @new-el)
                                   new)
+
     :else (let [{old-el :el old-props :props old-style :style old-children :children} old
                 {new-props :props new-style :style new-children :children} new
                 el @old-el
@@ -128,7 +132,7 @@
             (let [children (->>
                             (do-rec el old-children new-children)
                             (remove nil?)
-                            (doall))]
+                            doall)]
               (assoc new :children children :el old-el)))))
 
 (defn rend [root v-init]
