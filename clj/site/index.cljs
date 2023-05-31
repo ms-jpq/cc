@@ -13,10 +13,10 @@
                       (.querySelector "main"))]
     (rend main)))
 
-; (render! [:div.bg-stone-900
-;           [:h1 "Hello World!"]
-;           [:p "This is a paragraph."]
-;           [:p "This is another paragraph."]])
+(render! [:div.bg-stone-900
+          [:h1 "Hello World!"]
+          [:p "This is a paragraph."]
+          [:p "This is another paragraph."]])
 
 (render! [:div.bg-stone-900
           [:h1 (apply str (reverse "Hello World!"))]

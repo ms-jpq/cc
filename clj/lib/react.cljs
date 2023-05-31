@@ -21,12 +21,13 @@
      :id id
      :class-name class-name}))
 
-(defmulti ^:private parse #(cond (nil? %) :nil
-                                 (string? %) :str
-                                 ((some-fn vector? seq?) %) :seq))
-(defmethod parse :nil [_] nil)
-(defmethod parse :str [s] {:txt s})
-(defmethod parse :seq [[x & xs :as xss]]
+(defmulti ^:private parse #(cond (nil? %2) :nil
+                                 (string? %2) :str
+                                 ((some-fn vector? seq?) %2) :seq))
+(defmethod parse :nil [_ _] nil)
+(defmethod parse :str [key s] {:key key
+                               :txt s})
+(defmethod parse :seq [idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map parse) (remove empty?))
     (let [kw-props (parse-kw x)
@@ -34,10 +35,11 @@
                                         #(if (map? %) :r-props :r-children)
                                         xs)
           {:keys [tag key style]
+           :or {key idx}
            :as props} (->> r-props (apply merge-with into) (merge kw-props))
-          children (->> r-children (map parse) (remove empty?))]
-      {:tag tag
-       :key key
+          children (->> r-children (map-indexed parse) (remove empty?))]
+      {:key key
+       :tag tag
        :props (dissoc props :tag :key :style)
        :style style
        :children children})))
@@ -54,7 +56,7 @@
   {:pre [(int? depth) (not (nil? tree))]}
   (if-not (nil? txt)
     (do
-      (debug! .trace js/console (apply str (concat (repeat depth "..") [txt])))
+      (debug! .log js/console (apply str (concat (repeat depth "..") [txt])))
       (->> txt (. js/document createTextNode)
            (assoc tree :el)))
     (let [el (. js/document createElement tag)
@@ -66,7 +68,7 @@
           new-children (doall c-iter)]
       (set-props! el props)
       (set-props! el-style style)
-      (debug! .trace js/console (apply str (concat (repeat depth "->") [tag])))
+      (debug! .log js/console (apply str (concat (repeat depth "->") [tag])))
       (assoc tree :el el :children new-children))))
 
 (defn- recon-props! [target old-props new-props]
@@ -85,53 +87,40 @@
 (declare reconcile!)
 
 (defn- rec! [depth parent-el old-children new-children]
-  (loop [pos 0
-         old-c (->> old-children (reverse) (into []))
-         new-c (->> new-children (reverse) (into []))
-         old-index (->> old-children
-                        (map-indexed #(vector (:key %2) %1))
-                        (remove (comp nil? first))
-                        (into {}))
-         acc []]
-    (let [{old-el :el
-           old-key :key
-           :as old-child} (peek old-c)
-          {new-key :key
-           :as new-child} (peek new-c)
-          match (old-index new-key)]
-      (if (and old-child new-child)
+  (let [old-index (->> old-children
+                       (map :key)
+                       (into #{}))
+        new-index (->> new-children
+                       (map :key)
+                       (into #{}))]
+    (loop [old-c (->> old-children (reverse) (into []))
+           new-c (->> new-children (reverse) (into []))
+           acc []]
+      (let [{old-el :el
+             old-key :key
+             :as old-child} (peek old-c)
+            {new-key :key
+             :as new-child} (peek new-c)]
         (cond
+          (and (nil? old-child) (nil? new-child)) acc
+
           (nil? old-child) (let [{new-el :el
                                   :as drawn}
                                  (assoc-dom depth new-child)]
                              (.appendChild parent-el new-el)
-                             (recur nil old-c (pop new-c)
-                                    old-index (conj acc drawn)))
+                             (recur old-c (pop new-c) (conj acc drawn)))
 
-          (nil? new-child) (do (.remove old-el)
-                               (recur nil (pop old-c) new-c
-                                      old-index acc))
+          (or (nil? new-child) (not (contains? new-index old-key))) (do
+                                                                      (.remove old-el)
+                                                                      (recur (pop old-c) new-c acc))
 
-          (nil? new-key) (recur (+ 1 pos) (pop old-c) (pop new-c)
-                                (dissoc old-index old-key) (->> new-child (reconcile! depth old-child) (conj acc)))
+          (not (contains? old-index new-key)) (let [{new-el :el
+                                                     :as drawn}
+                                                    (assoc-dom depth new-child)]
+                                                (.before old-el new-el)
+                                                (recur old-c (pop new-c) (conj acc drawn)))
 
-          (nil? match) (let [{new-el :el
-                              :as drawn}
-                             (assoc-dom depth new-child)]
-                         (.before old-el new-el)
-                         (recur pos old-c (pop new-c)
-                                old-index (conj acc drawn)))
-
-          (= match pos) (recur (+ 1 pos) (pop old-c) (pop new-c)
-                               (dissoc old-index new-key) (->> new-child (reconcile! depth old-child) (conj acc)))
-
-          (> match pos) (do (.remove old-el)
-                            (recur pos (pop old-c) new-c
-                                   (dissoc old-index new-key) acc))
-
-          :else (assert false))
-
-        acc))))
+          :else (recur (pop old-c) (pop new-c) (->> new-child (reconcile! depth old-child) (conj acc))))))))
 
 (defn- replace-child! [depth old-el new]
   (let [{new-el :el
@@ -149,9 +138,10 @@
                     :as new}]
   {:pre [(not (nil? old)) (not (nil? new))]}
   (cond
-    (or old-txt new-txt) (if (= old-txt new-txt)
-                           old
-                           (replace-child! depth old-el new))
+    (or (not (nil? old-txt)) (not (nil? new-txt))) (cond (= old-txt new-txt) old
+                                                         (not (nil? old-txt)) (do (set! old-el -data new-txt)
+                                                                                  (assoc new :el old-el))
+                                                         :else (replace-child! depth old-el new))
 
     (not (= old-tag new-tag)) (replace-child! depth old-el new)
 
@@ -176,7 +166,7 @@
     (fn [v-next]
       (debug! .group js/console "rend")
       (->> v-next
-           parse
+           (parse 0)
            (swap! v-dom #(if (nil? %1)
                            (let [tree (assoc-dom 0 %2)]
                              (doseq [child (.-children root)]
