@@ -14,4 +14,4 @@
 (defn js-case [kw]
   (-> kw
       (name)
-      (s/replace re-case #(let [[_ m] %] (-> m str s/upper-case)))))
+      (s/replace re-case #(->> % second s/upper-case))))

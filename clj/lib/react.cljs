@@ -5,7 +5,7 @@
    [clojure.string :as s]
    [lib.prelude :refer [js-case]]))
 
-(def ^:private re-kw #"(^|#|\.)(\w+)")
+(def ^:private re-kw #"(^|#|\.)((?:\w|-)+)")
 (def ^:private v-map {"#" [:id "-"]
                       "." [:class-name " "]})
 
@@ -23,7 +23,7 @@
 
 (defmulti ^:private parse #(cond (nil? %2) :nil
                                  (string? %2) :str
-                                 ((some-fn vector? seq?) %2) :seq))
+                                 (seqable? %2) :seq))
 (defmethod parse :nil [_ _] nil)
 (defmethod parse :str [key s] {:key key
                                :txt s})
@@ -164,6 +164,7 @@
   {:pre [(instance? js/HTMLElement root)]}
   (let [v-dom (atom nil)]
     (fn [v-next]
+      {:pre [(seqable? v-next)]}
       (debug! .group js/console "rend")
       (->> v-next
            (parse 0)
