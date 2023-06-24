@@ -5,24 +5,26 @@
    [clojure.string :as s]
    [lib.prelude :refer [js-case]]))
 
-(def ^:private re-kw #"(^|#|\.)((?:\w|-)+)")
+(def ^:private re-kw #"(^|#|\.)([^#.]+)")
 (def ^:private v-map {"#" [:id "-"]
                       "." [:class-name " "]})
 
-(defn- parse-kw [kw]
-  {:pre [(keyword? kw)]}
+(defn parse-kw [kw]
+  {:pre [(keyword? kw)]
+   :post [(->> % :tag string?)]}
   (let [key (name kw)
         [[_ _ tag] & groups] (re-seq re-kw key)
         grouped (for [[k v] (group-by second groups)
                       :let [[id sep] (get v-map k)]]
                   [id (s/join sep (map last v))])
         {:keys [id class-name]} (into {} grouped)]
-    {:tag tag
+    {:tag (js-case tag)
      :id id
      :class-name class-name}))
 
 (defn- parse-children [children]
-  {:pre [(seqable? children)]}
+  {:pre [(seqable? children)]
+   :post [(seqable? %)]}
   (loop [acc []
          [c & cs] children]
     (let [n (nil? c)]
@@ -34,10 +36,12 @@
 
 (defmulti ^:private parse-impl #(cond (nil? %2) :nil
                                       (string? %2) :str
+                                      (int? %2) :int
                                       (seqable? %2) :seq))
 (defmethod parse-impl :nil [_ _] nil)
 (defmethod parse-impl :str [key s] {:key key
                                     :txt s})
+(defmethod parse-impl :int [key s] (parse-impl key (str s)))
 (defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
@@ -68,7 +72,7 @@
 
 (defn- assoc-dom [depth {:keys [txt tag props style children]
                          :as tree}]
-  {:pre [(int? depth) (map? tree) (seqable? children)]}
+  {:pre [(int? depth) (map? tree)]}
   (if (some? txt)
     (do
       (debug! .log js/console (apply str (concat (repeat depth "..") [txt])))
@@ -87,6 +91,7 @@
       (assoc tree :el el :children new-children))))
 
 (defn- recon-props! [target old-props new-props]
+  {:pre [(map? old-props) (map? new-props)]}
   (doseq [[new-key new-val] new-props
           :let [old-val (new-key old-props)]
           :when (not= old-val new-val)
@@ -102,6 +107,7 @@
 (declare reconcile!)
 
 (defn- rec! [depth parent-el old-children new-children]
+  {:pre [(int? depth) (seqable? old-children) (seqable? new-children)]}
   (let [old-index (->> old-children
                        (map :key)
                        (into #{}))

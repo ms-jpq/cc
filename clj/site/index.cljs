@@ -17,7 +17,7 @@
 (remove-watch state nil)
 (add-watch state nil #(render! %4))
 
-(def a2z (s/split "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ""))
+(def a2z (s/split "abcdefghijklmnopqrstuvwxyz" ""))
 
 (def col-name
   (memoize
@@ -34,18 +34,23 @@
                    (rem col)
                    col-name)))))))
 
-(defn- excel [rows cols]
+(defn- excel [{:keys [rows cols]}]
   {:pre [(int? rows) (int? cols)]}
-  [:div.sheet
-   {:class-name (str "columns-" (inc cols))}
-   [:div "."]
-   (for [row (range rows)]
-     [:div (str row)])
-   (for [c (range cols)]
-     [:div.col.flex.flex-nowrap.flex-col.justify-between
-      [:div (col-name c)]
-      (for [_ (range rows)]
-        [:div.row
-         (str "_")])])])
+  (let [col-range (range cols)]
+    [:div
+     [:label {:html-for "edit"} [:span [:i "f"] "(x)"]]
+     [:input#edit]
+     [:table.table-auto.divide-y.border.border-gray-200
+      [:tr.divide-x [:th]
+       (for [col (map col-name col-range)]
+         [:th.col.text-start.uppercase col])]
+      (for [row (->> rows range (map inc))]
+        [:tr.divide-x.even:bg-gray-100
+         [:td {:class-name "row text-end after:whitespace-pre after:content-['_']"}
+          row]
+         (for [_ col-range]
+           [:td
+            [:input.resize {:default-value _}]])])]]))
 
-(reset! state (excel 60 40))
+(reset! state (excel {:rows 20
+                      :cols 20}))
