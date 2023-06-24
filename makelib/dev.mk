@@ -10,7 +10,7 @@ dev-env:
 	mkdir --parents -- target/public/css
 
 dev-clj: dev-env target/public/index.html
-	DEBUG=1 clojure -M:dev
+	clojure -M:dev
 
 dev-css: dev-env
 	watchexec --shell none --restart -- node_modules/.bin/tailwindcss --input ./css/site.scss --output ./target/public/css/site.css

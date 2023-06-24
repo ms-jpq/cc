@@ -37,12 +37,15 @@
 (defn- excel [rows cols]
   {:pre [(int? rows) (int? cols)]}
   [:div.sheet
-   {:class-name (str "columns-" cols)}
+   {:class-name (str "columns-" (inc cols))}
+   [:div "."]
+   (for [row (range rows)]
+     [:div (str row)])
    (for [c (range cols)]
-     (let [column (col-name c)]
-       [:div.col.flex.flex-nowrap.flex-col.justify-between
-        (for [row (range rows)]
-          [:div.row
-           (str column "x" row)])]))])
+     [:div.col.flex.flex-nowrap.flex-col.justify-between
+      [:div (col-name c)]
+      (for [_ (range rows)]
+        [:div.row
+         (str "_")])])])
 
-(reset! state (excel 2 30))
+(reset! state (excel 60 40))
