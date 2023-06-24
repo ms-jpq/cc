@@ -22,17 +22,13 @@
 (def col-name
   (memoize
    (fn [col]
-     {:pre [(int? col)]}
+     {:pre [(int? col)]
+      :post [(string? %)]}
      (let [n (count a2z)]
        (if (< col n)
          (get a2z col)
-         (str (->> n
-                   (quot col)
-                   (dec)
-                   (col-name))
-              (->> n
-                   (rem col)
-                   col-name)))))))
+         (str (->> n (quot col) dec col-name)
+              (->> n (rem col) col-name)))))))
 
 (defn- excel [{:keys [rows cols]}]
   {:pre [(int? rows) (int? cols)]}

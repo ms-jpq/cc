@@ -85,11 +85,10 @@
            (assoc tree :el)))
     (let [el (. js/document createElement tag-name)
           el-style (.-style el)
-          c-iter (for [child children
-                       :let [{e :el
-                              :as c} (assoc-dom (+ depth 1) child)]]
-                   (do (.appendChild el e) c))
-          new-children (doall c-iter)]
+          new-children (doall (for [child children
+                                    :let [{e :el
+                                           :as c} (assoc-dom (+ depth 1) child)]]
+                                (do (.appendChild el e) c)))]
       (set-props! el props)
       (set-props! el-style style)
       (debug! .log js/console (apply str (concat (repeat depth "->") [tag-name])))
@@ -163,7 +162,7 @@
                    {new-txt :txt
                     new-tag :tag-name
                     :as new}]
-  {:pre [(some? old) (some? new)]}
+  {:pre [(map? old) (map? new)]}
   (cond
     (or (some? old-txt) (some? new-txt)) (cond (= old-txt new-txt) old
                                                (some? old-txt) (do (set! old-el -data new-txt)
