@@ -8,7 +8,7 @@
 
 (defonce state (atom nil))
 
-(def render!
+(defonce render!
   (when-let [main (-> js/document
                       .-body
                       (.querySelector "main"))]
@@ -45,13 +45,12 @@
          [:td {:class "row text-end after:whitespace-pre after:content-['_'] min-w-[3rem]"}
           row]
          (for [col col-names]
-           [:td {:class (str "row-" row " " "col-" col)}
-            [:div.flex.flex-col
-             [:div.flex.flex-row
-              [:input.grow.overflow-auto.text-ellipsis {:default-value "box"
-                                                        :disabled true}]
-              [:span {:class "cursor-ew-resize w-0.5"}]]
-             [:span {:class "cursor-ns-resize h-0.5"}]]])])]]))
+           [:td {:data-row row
+                 :data-col col
+                 :data-cell (str col row)}
+            [:label {:class "inline-flex after:whitespace-pre after:content-['_'] after:w-0.5 after:cursor-ew-resize"}
+             [:label {:class "inline-flex flex-col after:whitespace-pre after:content-['_'] after:h-0.5 after:cursor-ns-resize"}
+              [:input {:value nil}]]]])])]]))
 
-(reset! state (excel {:rows 20
-                      :cols 20}))
+(reset! state (excel {:rows 5
+                      :cols 5}))

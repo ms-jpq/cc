@@ -12,6 +12,8 @@
 
 (def ^:private re-case #"-(\w)")
 (defn js-case [kw]
-  (-> kw
-      name
-      (s/replace re-case #(->> % second s/upper-case))))
+  (if (string? kw)
+    kw
+    (-> kw
+        name
+        (s/replace re-case #(->> % second s/upper-case)))))

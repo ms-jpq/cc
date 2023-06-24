@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as s]
+   [clojure.walk :as w]
    [lib.prelude :refer [js-case]]))
 
 (def ^:private re-kw #"(^|#|\.)([^#.]+)")
@@ -50,17 +51,31 @@
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
     (let [kw-props (parse-kw x)
-          {:keys [r-props r-children]} (group-by
-                                        #(if (map? %) :r-props :r-children)
-                                        xs)
+          {:keys [raw-props raw-children]
+           :or {raw-children []}} (group-by
+                                   #(if (map? %) :raw-props :raw-children)
+                                   xs)
           {:keys [tag-name key style]
-           :or {key key-idx style {}}
-           :as raw-props} (->> r-props (apply merge-with into) (merge kw-props))
-          props (-> raw-props (dissoc :tag-name :key :style) (set/rename-keys attr-subst))
-          children (->> r-children (map-indexed parse-impl) parse-children)]
+           :or {key key-idx
+                style {}}
+           :as props} (->> raw-props (apply merge-with into) (merge kw-props))
+          raw-attrs (-> props
+                        (dissoc :tag-name :key :style)
+                        (set/rename-keys attr-subst))
+          {:keys [attrs data]
+           :or {attrs []
+                data []}} (group-by
+                           #(if (-> % first name (s/starts-with? "data-")) :data :attrs)
+                           raw-attrs)
+          dataset (w/walk
+                   #(vector (-> % first name (s/replace-first "data-" "")) (last %))
+                   #(into {} %)
+                   data)
+          children (->> raw-children (map-indexed parse-impl) parse-children)]
       {:key key
        :tag-name tag-name
-       :props props
+       :attrs (into {} attrs)
+       :dataset dataset
        :style style
        :children children})))
 
@@ -71,11 +86,9 @@
   {:pre [(seqable? props)]}
   (doseq [[key val] props
           :let [js-key (js-case key)]]
-    (if (nil? val)
-      (js-delete target js-key)
-      (aset target js-key val))))
+    (aset target js-key val)))
 
-(defn- assoc-dom [depth {:keys [txt tag-name props style children]
+(defn- assoc-dom [depth {:keys [txt tag-name attrs dataset style children]
                          :as tree}]
   {:pre [(int? depth) (map? tree)]}
   (if (nil? tag-name)
@@ -84,12 +97,14 @@
       (->> txt (. js/document createTextNode)
            (assoc tree :el)))
     (let [el (. js/document createElement tag-name)
+          el-data (.-dataset el)
           el-style (.-style el)
           new-children (doall (for [child children
                                     :let [{e :el
                                            :as c} (assoc-dom (+ depth 1) child)]]
                                 (do (.appendChild el e) c)))]
-      (set-props! el props)
+      (set-props! el attrs)
+      (set-props! el-data dataset)
       (set-props! el-style style)
       (debug! .log js/console (apply str (concat (repeat depth "->") [tag-name])))
       (assoc tree :el el :children new-children))))
@@ -97,14 +112,12 @@
 (defn- recon-props! [target old-props new-props]
   {:pre [(map? old-props) (map? new-props)]}
   (doseq [[new-key new-val] new-props
-          :let [old-val (new-key old-props)]
+          :let [old-val (get old-props new-key)]
           :when (not= old-val new-val)
           :let [js-key (js-case new-key)]]
-    (if (nil? new-val)
-      (js-delete target js-key)
-      (aset target js-key new-val)))
+    (aset target js-key new-val))
   (doseq [[old-key] old-props
-          :when (not (contains? old-key new-props))
+          :when (not (contains? new-props old-key))
           :let [js-key (js-case old-key)]]
     (js-delete target js-key)))
 
@@ -165,20 +178,24 @@
   {:pre [(map? old) (map? new)]}
   (cond
     (or (nil? old-tag) (nil? new-tag)) (cond (= old-txt new-txt) old
-                                               (some? old-txt) (do (set! old-el -data new-txt)
-                                                                   (assoc new :el old-el))
-                                               :else (replace-child! depth old-el new))
+                                             (some? old-txt) (do (set! old-el -data new-txt)
+                                                                 (assoc new :el old-el))
+                                             :else (replace-child! depth old-el new))
 
     (not= old-tag new-tag) (replace-child! depth old-el new)
 
-    :else (let [{old-props :props
+    :else (let [{old-attrs :attrs
+                 old-dataset :dataset
                  old-style :style
                  old-children :children} old
-                {new-props :props
+                {new-attrs :attrs
+                 new-dataset :dataset
                  new-style :style
                  new-children :children} new
+                el-data (.-dataset old-el)
                 el-style (.-style old-el)]
-            (recon-props! old-el old-props new-props)
+            (recon-props! old-el old-attrs new-attrs)
+            (recon-props! el-data old-dataset new-dataset)
             (recon-props! el-style old-style new-style)
             (let [children (->>
                             (rec! (+ depth 1) old-el old-children new-children)
