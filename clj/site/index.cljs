@@ -3,7 +3,7 @@
    [clojure.string :as s]
    [lib.react :refer [rend]]))
 
-; (enable-console-print!)
+(enable-console-print!)
 (.clear js/console)
 
 (defonce state (atom nil))
@@ -38,7 +38,7 @@
   {:pre [(int? rows) (int? cols)]}
   (let [col-range (range cols)]
     [:div
-     [:label {:html-for "edit"} [:span [:i "f"] "(x)"]]
+     [:label {:for "edit"} [:span [:i "f"] "(x)"]]
      [:input#edit]
      [:table.table-auto.divide-y.border.border-gray-200
       [:tr.divide-x [:th]
@@ -46,11 +46,11 @@
          [:th.col.text-start.uppercase col])]
       (for [row (->> rows range (map inc))]
         [:tr.divide-x.even:bg-gray-100
-         [:td {:class-name "row text-end after:whitespace-pre after:content-['_']"}
+         [:td {:class "row text-end after:whitespace-pre after:content-['_']"}
           row]
          (for [_ col-range]
            [:td
             [:input.resize {:default-value _}]])])]]))
 
-(reset! state (excel {:rows 20
-                      :cols 20}))
+(reset! state (excel {:rows 9
+                      :cols 9}))

@@ -2,6 +2,7 @@
   (:require-macros
    [lib.macros :refer [debug!]])
   (:require
+   [clojure.set :as set]
    [clojure.string :as s]
    [lib.prelude :refer [js-case]]))
 
@@ -9,16 +10,19 @@
 (def ^:private v-map {"#" [:id "-"]
                       "." [:class-name " "]})
 
+(def ^:private attr-subst {:class :class-name
+                           :for :html-for})
+
 (defn parse-kw [kw]
   {:pre [(keyword? kw)]
-   :post [(->> % :tag string?)]}
+   :post [(->> % :tag-name string?)]}
   (let [key (name kw)
         [[_ _ tag] & groups] (re-seq re-kw key)
         grouped (for [[k v] (group-by second groups)
                       :let [[id sep] (get v-map k)]]
                   [id (s/join sep (map last v))])
         {:keys [id class-name]} (into {} grouped)]
-    {:tag (js-case tag)
+    {:tag-name (js-case tag)
      :id id
      :class-name class-name}))
 
@@ -49,13 +53,14 @@
           {:keys [r-props r-children]} (group-by
                                         #(if (map? %) :r-props :r-children)
                                         xs)
-          {:keys [tag key style]
+          {:keys [tag-name key style]
            :or {key key-idx}
-           :as props} (->> r-props (apply merge-with into) (merge kw-props))
+           :as raw-props} (->> r-props (apply merge-with into) (merge kw-props))
+          props (-> raw-props (dissoc :tag-name :key :style) (set/rename-keys attr-subst))
           children (->> r-children (map-indexed parse-impl) parse-children)]
       {:key key
-       :tag tag
-       :props (dissoc props :tag :key :style)
+       :tag-name tag-name
+       :props props
        :style style
        :children children})))
 
@@ -70,15 +75,15 @@
       (js-delete target js-key)
       (aset target js-key val))))
 
-(defn- assoc-dom [depth {:keys [txt tag props style children]
+(defn- assoc-dom [depth {:keys [txt tag-name props style children]
                          :as tree}]
   {:pre [(int? depth) (map? tree)]}
-  (if (some? txt)
+  (if (nil? tag-name)
     (do
       (debug! .log js/console (apply str (concat (repeat depth "..") [txt])))
       (->> txt (. js/document createTextNode)
            (assoc tree :el)))
-    (let [el (. js/document createElement tag)
+    (let [el (. js/document createElement tag-name)
           el-style (.-style el)
           c-iter (for [child children
                        :let [{e :el
@@ -87,7 +92,7 @@
           new-children (doall c-iter)]
       (set-props! el props)
       (set-props! el-style style)
-      (debug! .log js/console (apply str (concat (repeat depth "->") [tag])))
+      (debug! .log js/console (apply str (concat (repeat depth "->") [tag-name])))
       (assoc tree :el el :children new-children))))
 
 (defn- recon-props! [target old-props new-props]
@@ -152,11 +157,11 @@
 
 (defn- reconcile! [depth
                    {old-txt :txt
-                    old-tag :tag
+                    old-tag :tag-name
                     old-el :el
                     :as old}
                    {new-txt :txt
-                    new-tag :tag
+                    new-tag :tag-name
                     :as new}]
   {:pre [(some? old) (some? new)]}
   (cond
