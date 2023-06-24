@@ -54,7 +54,7 @@
                                         #(if (map? %) :r-props :r-children)
                                         xs)
           {:keys [tag-name key style]
-           :or {key key-idx}
+           :or {key key-idx style {}}
            :as raw-props} (->> r-props (apply merge-with into) (merge kw-props))
           props (-> raw-props (dissoc :tag-name :key :style) (set/rename-keys attr-subst))
           children (->> r-children (map-indexed parse-impl) parse-children)]
@@ -164,7 +164,7 @@
                     :as new}]
   {:pre [(map? old) (map? new)]}
   (cond
-    (or (some? old-txt) (some? new-txt)) (cond (= old-txt new-txt) old
+    (or (nil? old-tag) (nil? new-tag)) (cond (= old-txt new-txt) old
                                                (some? old-txt) (do (set! old-el -data new-txt)
                                                                    (assoc new :el old-el))
                                                :else (replace-child! depth old-el new))

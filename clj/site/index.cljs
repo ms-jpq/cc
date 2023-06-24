@@ -32,21 +32,26 @@
 
 (defn- excel [{:keys [rows cols]}]
   {:pre [(int? rows) (int? cols)]}
-  (let [col-range (range cols)]
+  (let [col-names (->> cols range (map col-name))]
     [:div
      [:label {:for "edit"} [:span [:i "f"] "(x)"]]
      [:input#edit]
      [:table.table-auto.divide-y.border.border-gray-200
       [:tr.divide-x [:th]
-       (for [col (map col-name col-range)]
+       (for [col col-names]
          [:th.col.text-start.uppercase col])]
       (for [row (->> rows range (map inc))]
         [:tr.divide-x.even:bg-gray-100
-         [:td {:class "row text-end after:whitespace-pre after:content-['_']"}
+         [:td {:class "row text-end after:whitespace-pre after:content-['_'] min-w-[3rem]"}
           row]
-         (for [_ col-range]
-           [:td
-            [:input.resize {:default-value _}]])])]]))
+         (for [col col-names]
+           [:td {:class (str "row-" row " " "col-" col)}
+            [:div.flex.flex-col
+             [:div.flex.flex-row
+              [:input.grow.overflow-auto.text-ellipsis {:default-value "box"
+                                                        :disabled true}]
+              [:span {:class "cursor-ew-resize w-0.5"}]]
+             [:span {:class "cursor-ns-resize h-0.5"}]]])])]]))
 
-(reset! state (excel {:rows 9
-                      :cols 9}))
+(reset! state (excel {:rows 20
+                      :cols 20}))
