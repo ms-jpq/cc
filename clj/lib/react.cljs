@@ -59,6 +59,7 @@
   (parse-impl 0 tree))
 
 (defn- set-props! [target props]
+  {:pre [(seqable? props)]}
   (doseq [[key val] props
           :let [js-key (js-case key)]]
     (if (nil? val)
@@ -67,8 +68,8 @@
 
 (defn- assoc-dom [depth {:keys [txt tag props style children]
                          :as tree}]
-  {:pre [(int? depth) (not (nil? tree))]}
-  (if-not (nil? txt)
+  {:pre [(int? depth) (map? tree) (seqable? children)]}
+  (if (some? txt)
     (do
       (debug! .log js/console (apply str (concat (repeat depth "..") [txt])))
       (->> txt (. js/document createTextNode)
@@ -88,7 +89,7 @@
 (defn- recon-props! [target old-props new-props]
   (doseq [[new-key new-val] new-props
           :let [old-val (new-key old-props)]
-          :when (not (= old-val new-val))
+          :when (not= old-val new-val)
           :let [js-key (js-case new-key)]]
     (if (nil? new-val)
       (js-delete target js-key)
@@ -137,6 +138,7 @@
           :else (recur (pop old-c) (pop new-c) (->> new-child (reconcile! depth old-child) (conj acc))))))))
 
 (defn- replace-child! [depth old-el new]
+  {:pre [(int? depth) (map? new)]}
   (let [{new-el :el
          :as drawn} (assoc-dom depth new)]
     (.replaceWith old-el new-el)
@@ -150,14 +152,14 @@
                    {new-txt :txt
                     new-tag :tag
                     :as new}]
-  {:pre [(not (nil? old)) (not (nil? new))]}
+  {:pre [(some? old) (some? new)]}
   (cond
-    (or (not (nil? old-txt)) (not (nil? new-txt))) (cond (= old-txt new-txt) old
-                                                         (not (nil? old-txt)) (do (set! old-el -data new-txt)
-                                                                                  (assoc new :el old-el))
-                                                         :else (replace-child! depth old-el new))
+    (or (some? old-txt) (some? new-txt)) (cond (= old-txt new-txt) old
+                                               (some? old-txt) (do (set! old-el -data new-txt)
+                                                                   (assoc new :el old-el))
+                                               :else (replace-child! depth old-el new))
 
-    (not (= old-tag new-tag)) (replace-child! depth old-el new)
+    (not= old-tag new-tag) (replace-child! depth old-el new)
 
     :else (let [{old-props :props
                  old-style :style

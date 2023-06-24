@@ -1,8 +1,9 @@
 (ns site.index
   (:require
+   [clojure.string :as s]
    [lib.react :refer [rend]]))
 
-(enable-console-print!)
+; (enable-console-print!)
 (.clear js/console)
 
 (defonce state (atom nil))
@@ -16,11 +17,32 @@
 (remove-watch state nil)
 (add-watch state nil #(render! %4))
 
+(def a2z (s/split "ABCDEFGHIJKLMNOPQRSTUVWXYZ" ""))
+
+(def col-name
+  (memoize
+   (fn [col]
+     {:pre [(int? col)]}
+     (let [n (count a2z)]
+       (if (< col n)
+         (get a2z col)
+         (str (->> n
+                   (quot col)
+                   (dec)
+                   (col-name))
+              (->> n
+                   (rem col)
+                   col-name)))))))
+
 (defn- excel [rows cols]
   {:pre [(int? rows) (int? cols)]}
-  [:div.excel
-   (for [_ (range cols)]
-     [:div.col (for [_ (range rows)]
-                 [:div "cell"])])])
+  [:div.sheet
+   {:class-name (str "columns-" cols)}
+   (for [c (range cols)]
+     (let [column (col-name c)]
+       [:div.col.flex.flex-nowrap.flex-col.justify-between
+        (for [row (range rows)]
+          [:div.row
+           (str column "x" row)])]))])
 
-(reset! state (excel 10 10))
+(reset! state (excel 2 30))
