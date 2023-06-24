@@ -21,28 +21,42 @@
      :id id
      :class-name class-name}))
 
-(defmulti ^:private parse #(cond (nil? %2) :nil
-                                 (string? %2) :str
-                                 (seqable? %2) :seq))
-(defmethod parse :nil [_ _] nil)
-(defmethod parse :str [key s] {:key key
-                               :txt s})
-(defmethod parse :seq [idx [x & xs :as xss]]
+(defn- parse-children [children]
+  {:pre [(seqable? children)]}
+  (loop [acc []
+         [c & cs] children]
+    (let [n (nil? c)]
+      (cond
+        (and n (empty? cs)) acc
+        n (recur acc cs)
+        (map? c) (recur (conj acc c) cs)
+        :else (recur acc (concat c cs))))))
+
+(defmulti ^:private parse-impl #(cond (nil? %2) :nil
+                                      (string? %2) :str
+                                      (seqable? %2) :seq))
+(defmethod parse-impl :nil [_ _] nil)
+(defmethod parse-impl :str [key s] {:key key
+                                    :txt s})
+(defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
-    (->> xss (map parse) (remove empty?))
+    (->> xss (map-indexed parse-impl) parse-children)
     (let [kw-props (parse-kw x)
           {:keys [r-props r-children]} (group-by
                                         #(if (map? %) :r-props :r-children)
                                         xs)
           {:keys [tag key style]
-           :or {key idx}
+           :or {key key-idx}
            :as props} (->> r-props (apply merge-with into) (merge kw-props))
-          children (->> r-children (map-indexed parse) (remove empty?))]
+          children (->> r-children (map-indexed parse-impl) parse-children)]
       {:key key
        :tag tag
        :props (dissoc props :tag :key :style)
        :style style
        :children children})))
+
+(defn parse [tree]
+  (parse-impl 0 tree))
 
 (defn- set-props! [target props]
   (doseq [[key val] props
@@ -167,7 +181,7 @@
       {:pre [(seqable? v-next)]}
       (debug! .group js/console "rend")
       (->> v-next
-           (parse 0)
+           parse
            (swap! v-dom #(if (nil? %1)
                            (let [tree (assoc-dom 0 %2)]
                              (doseq [child (.-children root)]
