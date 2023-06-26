@@ -143,13 +143,13 @@
 (defn- rec! [depth parent-el old-children new-children]
   {:pre [(int? depth) (instance? PersistentTreeMap old-children) (instance? PersistentTreeMap new-children)]
    :post [(instance? PersistentTreeMap %)]}
-  (loop [old-c (->> old-children (reverse) (into []))
-         new-c (->> new-children (reverse) (into []))
+  (loop [old-c (->> old-children reverse (into []))
+         new-c (->> new-children reverse (into []))
          acc (sorted-map)]
     (let [[[old-key {old-el :el
                      :as old-child}] & old-rest] old-c
           [[new-key new-child] & new-rest] new-c
-          assoc-child #(assoc acc (:key %) %)]
+          assoc-child (comp (partial apply assoc acc) (juxt :key identity))]
       (cond
         (= nil old-child new-child) acc
 
