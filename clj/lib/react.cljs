@@ -50,7 +50,7 @@
 (defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
-    (let [kw-props (->> x parse-kw (filter #(->> % last some?)) (into {}))
+    (let [kw-props (->> x parse-kw (filter #(->> % second some?)) (into {}))
           {:keys [raw-props raw-children]
            :or {raw-children []}} (group-by
                                    #(if (map? %) :raw-props :raw-children)
@@ -68,7 +68,7 @@
                            #(if (-> % first name (s/starts-with? "data-")) :data :attrs)
                            raw-attrs)
           dataset (w/walk
-                   #(vector (-> % first name (s/replace-first "data-" "")) (last %))
+                   #(vector (-> % first name (s/replace-first "data-" "")) (second %))
                    #(into {} %)
                    data)
           children (->> raw-children (map-indexed parse-impl) parse-children)]
