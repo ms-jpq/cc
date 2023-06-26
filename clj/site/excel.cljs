@@ -30,8 +30,9 @@
      [:div.flex.flex-col
       [:hr]
       [:label.inline-flex.select-none
-       [:span [:i "f"] "(x)"
-        {:class "whitespace-nowrap before:content-['_'] after:content-['_'] before:inline-block after:inline-block before:w-2 after:w-2"}]
+       [:span.whitespace-nowrap.before:inline-block.after:inline-block.before:w-2.after:w-2
+        {:class "before:content-['_'] after:content-['_']"}
+        [:i "f"] "(x)"]
        [:input.grow.w-full]]
       [:table.table-auto.divide-y.border.border-gray-200
        [:tr.divide-x {:data-tr 0} [:th]
@@ -39,8 +40,9 @@
           [:th.select-none.text-start.uppercase {:data-th col} col])]
        (for [row (->> rows range (map inc))]
          [:tr.group.divide-x {:data-tr row}
-          [:td {:data-row-label row}
-           {:class "select-none group-even:bg-gray-100 text-end whitespace-nowrap after:content-['_'] after:inline-block after:w-4"}
+          [:td.select-none.text-end.whitespace-nowrap.after:inline-block.after:w-4.group-even:bg-gray-100
+           {:class "after:content-['_']"}
+           {:data-row-label row}
            row]
           (for [col col-names
                 :let [cell {:row row
@@ -48,11 +50,13 @@
             [:td {:data-row row
                   :data-col col
                   :data-cell (str col row)}
-             [:label {:class "inline-flex w-full after:whitespace-pre after:content-['_'] after:w-0.5 after:cursor-ew-resize"}
-
-              [:label {:class "inline-flex flex-col w-full after:whitespace-pre after:content-['_'] after:h-0.5 after:cursor-ns-resize"}
+             [:label.inline-flex.w-full.after:whitespace-pre.after:cursor-ew-resize
+              {:class "after:w-0.5 after:content-['_']"}
+              [:label.inline-flex.flex-col.w-full.after:whitespace-pre.after:cursor-ns-resize
+               {:class "after:h-0.5 after:content-['_']"}
                [:input
-                (when-not (= selected cell)
-                  {:value (->> cell (get cells) :val)})
+                {:value (if (= selected cell)
+                          (->> cell (get cells) :expr)
+                          (->> cell (get cells) :val))}
                 {:onfocus #(swap! atom assoc :selected cell)}
                 {:oninput #(swap! atom update-in [:cells] assoc cell (-> % (.. -currentTarget -value) parse))}]]]])])]]]))

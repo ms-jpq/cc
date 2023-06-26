@@ -32,10 +32,10 @@
    :post [(seqable? %)]}
   (loop [acc []
          [c & cs] children]
-    (let [n (nil? c)]
+    (let [nul? (nil? c)]
       (cond
-        (and n (empty? cs)) acc
-        n (recur acc cs)
+        (and nul? (empty? cs)) acc
+        nul? (recur acc cs)
         (map? c) (recur (conj acc c) cs)
         :else (recur acc (concat c cs))))))
 
@@ -46,22 +46,30 @@
 (defmethod parse-impl :nil [_ _] nil)
 (defmethod parse-impl :str [key s] {:key key
                                     :txt s})
-(defmethod parse-impl :int [key s] (parse-impl key (str s)))
+(defmethod parse-impl :int [key i] {:key key
+                                    :txt (str i)})
 (defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
-    (let [kw-props (->> x parse-kw (filter #(->> % second some?)) (into {}))
+    (let [{:keys [tag-name id class-name]} (parse-kw x)
           {:keys [raw-props raw-children]
            :or {raw-children []}} (group-by
                                    #(if (map? %) :raw-props :raw-children)
                                    xs)
-          {:keys [tag-name key style]
+          props (as-> raw-props $
+                  (apply merge-with into $)
+                  (set/rename-keys $ attr-subst))
+          {:keys [key style]
            :or {key key-idx
                 style {}}
-           :as props} (->> raw-props (apply merge-with into) (merge kw-props))
-          raw-attrs (-> props
-                        (dissoc :tag-name :key :style)
-                        (set/rename-keys attr-subst))
+           :as raw-attrs} (cond-> props
+                            id (update-in
+                                [:id]
+                                #(if % (str id "-" %) id))
+                            class-name (update-in
+                                        [:class-name]
+                                        #(if % (str class-name " " %) class-name))
+                            true (dissoc :tag-name :key :style))
           {:keys [attrs data]
            :or {attrs []
                 data []}} (group-by
@@ -82,11 +90,17 @@
 (defn parse [tree]
   (parse-impl 0 tree))
 
+(defn- set-prop! [target key val]
+  (let [js-key (js-case key)
+        js-val (clj->js val)]
+    (if (nil? val)
+      (js-delete target key)
+      (aset target js-key js-val))))
+
 (defn- set-props! [target props]
   {:pre [(seqable? props)]}
-  (doseq [[key val] props
-          :let [js-key (js-case key)]]
-    (aset target js-key val)))
+  (doseq [[key val] props]
+    (set-prop! target key val)))
 
 (defn- assoc-dom [depth {:keys [txt tag-name attrs dataset style children]
                          :as tree}]
@@ -113,13 +127,11 @@
   {:pre [(map? old-props) (map? new-props)]}
   (doseq [[new-key new-val] new-props
           :let [old-val (get old-props new-key)]
-          :when (not= old-val new-val)
-          :let [js-key (js-case new-key)]]
-    (aset target js-key new-val))
+          :when (not= old-val new-val)]
+    (set-prop! target new-key new-val))
   (doseq [[old-key] old-props
-          :when (not (contains? new-props old-key))
-          :let [js-key (js-case old-key)]]
-    (js-delete target js-key)))
+          :when (not (contains? new-props old-key))]
+    (set-prop! target old-key nil)))
 
 (declare reconcile!)
 
