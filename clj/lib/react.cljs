@@ -4,12 +4,15 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as s]
-   [clojure.walk :as w]
+   [lib.js :refer [js-delay]]
    [lib.prelude :refer [js-case]]))
 
+(def ^:private sep-id "-")
+(def ^:private sep-class " ")
+
 (def ^:private re-kw #"(^|#|\.)([^#.]+)")
-(def ^:private v-map {"#" [:id "-"]
-                      "." [:class-name " "]})
+(def ^:private v-map {"#" [:id sep-id]
+                      "." [:class-name sep-class]})
 
 (def ^:private attr-subst {:class :class-name
                            :for :html-for})
@@ -65,20 +68,19 @@
            :as raw-attrs} (cond-> props
                             id (update-in
                                 [:id]
-                                #(if % (str id "-" %) id))
+                                #(if-some [_ %] (str id sep-id %) id))
                             class-name (update-in
                                         [:class-name]
-                                        #(if % (str class-name " " %) class-name))
+                                        #(if-some [_ %] (str class-name sep-class %) class-name))
                             true (dissoc :tag-name :key :style))
           {:keys [attrs data]
            :or {attrs []
                 data []}} (group-by
                            #(if (-> % first name (s/starts-with? "data-")) :data :attrs)
                            raw-attrs)
-          dataset (w/walk
-                   #(vector (-> % first name (s/replace-first "data-" "")) (second %))
-                   #(into {} %)
-                   data)
+          dataset (->> data
+                       (map (fn [kv] (update-in kv [0] #(-> % name (s/replace-first "data-" "")))))
+                       (into {}))
           children (->> raw-children (map-indexed parse-impl) parse-children)]
       {:key key
        :tag-name tag-name
@@ -107,7 +109,7 @@
   {:pre [(int? depth) (map? tree)]}
   (if (nil? tag-name)
     (do
-      (debug! .log js/console (apply str (concat (repeat depth "..") [txt])))
+      (debug! (.log js/console (apply str (concat (repeat depth "..") [txt]))))
       (->> txt (. js/document createTextNode)
            (assoc tree :el)))
     (let [el (. js/document createElement tag-name)
@@ -120,7 +122,7 @@
       (set-props! el attrs)
       (set-props! el-data dataset)
       (set-props! el-style style)
-      (debug! .log js/console (apply str (concat (repeat depth "->") [tag-name])))
+      (debug! (.log js/console (apply str (concat (repeat depth "->") [tag-name]))))
       (assoc tree :el el :children new-children))))
 
 (defn- recon-props! [target old-props new-props]
@@ -215,19 +217,30 @@
                             doall)]
               (assoc new :children children :el old-el)))))
 
+(def ^:private jdelay (js-delay 64))
+
 (defn rend [root]
   {:pre [(instance? js/HTMLElement root)]}
-  (let [v-dom (atom nil)]
+  (let [v-dom (atom nil)
+        handle (atom nil)
+        ree! (partial reconcile! 0)]
     (fn [v-next]
       {:pre [(seqable? v-next)]}
-      (debug! .group js/console "rend")
-      (->> v-next
-           parse
-           (swap! v-dom #(if (nil? %1)
-                           (let [tree (assoc-dom 0 %2)]
-                             (doseq [child (.-children root)]
-                               (.remove child))
-                             (.appendChild root (:el tree))
-                             tree)
-                           (reconcile! 0 %1 %2))))
-      (debug! .groupEnd js/console))))
+      (debug! (.group js/console))
+      (swap! v-dom (fn [old]
+                     (if (nil? old)
+                       (let [new-tree (->> v-next parse (assoc-dom 0))]
+                         (doseq [child (.-children root)]
+                           (.remove child))
+                         (.appendChild root (:el new-tree))
+                         new-tree)
+                       (do
+                         (debug! (.time js/console))
+                         (jdelay #(do
+                                    (let [parsed (parse v-next)]
+                                      (swap! v-dom ree! parsed))
+                                    (debug! (.timeEnd js/console))))
+                         old))))
+
+      (debug! (.groupEnd js/console))
+      nil)))
