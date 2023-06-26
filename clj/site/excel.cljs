@@ -1,18 +1,25 @@
 (ns site.excel
   (:require
-   [clojure.string :as s]))
+   [clojure.string :as s]
+   [lib.math]))
 
 (def ^:private a2z (s/split "abcdefghijklmnopqrstuvwxyz" ""))
 
-(def ^:private op-names {"%" 'mod
-                         "**" 'lib.math/pow})
+(def ^:private op-prefix #{'-})
 
-(def ^:private operations {'+ 0
-                           '- 0
-                           '* 1
-                           '/ 1
-                           'mod 1
-                           'lib.math/pow 2})
+(def ^:private infix-alias {'% 'mod
+                            '** 'lib.math/pow})
+
+(def ^:private op-infix {'+ 0
+                         '- 0
+                         '* 1
+                         '/ 1
+                         '% 1
+                         '** 2})
+
+(cljs.pprint/pprint (ns-publics 'lib.math))
+(def ^:private op-fn {'abs 1
+                      'lib.math/cos 1})
 
 (def ^:private col-name
   (memoize

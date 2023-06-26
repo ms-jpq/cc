@@ -17,10 +17,15 @@
       name
       (s/replace re-case #(->> % second s/upper-case))))
 
-(defmacro math! [& ops]
+(defmacro math-1! [& ops]
   {:pre [(every? keyword? ops)]}
-  (doseq [op ops
-          :let [op-name (symbol op)
-                x (gensym)]]
-    `(defn ~op-name [~x]
+  (for [op ops
+        :let [op-name (symbol op)
+              x (gensym)]]
+    `(defn ^:math-1 ~op-name [~x]
        (. js/Math ~op-name ~x))))
+
+(def arity (memoize
+            (fn [f]
+              {:pre [(fn? f)]}
+              (->> f meta :arglists first count))))
