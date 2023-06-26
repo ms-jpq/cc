@@ -37,17 +37,18 @@
      [:label {:for "edit"} [:span [:i "f"] "(x)"]]
      [:input#edit]
      [:table.table-auto.divide-y.border.border-gray-200
-      [:tr.divide-x [:th]
+      [:tr.divide-x {:data-tr 0} [:th]
        (for [col col-names]
-         [:th.col.text-start.uppercase col])]
+         [:th.col.text-start.uppercase {:data-col-label col} col])]
       (for [row (->> rows range (map inc))]
-        [:tr.divide-x.even:bg-gray-100
-         [:td {:class "row text-end after:whitespace-pre after:content-['_'] min-w-[3rem]"}
+        [:tr.group.divide-x {:data-tr row}
+         [:td {:data-row-label row}
+          {:class "row group-even:bg-gray-100 text-end after:whitespace-pre after:content-['_'] min-w-[3rem]"}
           row]
          (for [col col-names]
-           [:td {:data-row row
-                 :data-col col
-                 :data-cell (str col row)}
+           [:td.cell {:data-row row
+                      :data-col col
+                      :data-cell (str col row)}
             [:label {:class "inline-flex after:whitespace-pre after:content-['_'] after:w-0.5 after:cursor-ew-resize"}
              [:label {:class "inline-flex flex-col after:whitespace-pre after:content-['_'] after:h-0.5 after:cursor-ns-resize"}
               [:input {:value nil}]]]])])]]))

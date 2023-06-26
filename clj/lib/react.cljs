@@ -50,7 +50,7 @@
 (defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
-    (let [kw-props (parse-kw x)
+    (let [kw-props (->> x parse-kw (filter #(->> % last some?)) (into {}))
           {:keys [raw-props raw-children]
            :or {raw-children []}} (group-by
                                    #(if (map? %) :raw-props :raw-children)
