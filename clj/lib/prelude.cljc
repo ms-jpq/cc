@@ -16,3 +16,11 @@
   (-> kw
       name
       (s/replace re-case #(->> % second s/upper-case))))
+
+(defmacro math! [& ops]
+  {:pre [(every? keyword? ops)]}
+  (doseq [op ops
+          :let [op-name (symbol op)
+                x (gensym)]]
+    `(defn ~op-name [~x]
+       (. js/Math ~op-name ~x))))

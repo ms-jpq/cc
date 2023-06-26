@@ -152,7 +152,7 @@
             {new-key :key
              :as new-child} (peek new-c)]
         (cond
-          (and (nil? old-child) (nil? new-child)) acc
+          (= nil old-child new-child) acc
 
           (nil? old-child) (let [{new-el :el
                                   :as drawn}

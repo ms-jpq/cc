@@ -4,6 +4,16 @@
 
 (def ^:private a2z (s/split "abcdefghijklmnopqrstuvwxyz" ""))
 
+(def ^:private op-names {"%" 'mod
+                         "**" 'lib.math/pow})
+
+(def ^:private operations {'+ 0
+                           '- 0
+                           '* 1
+                           '/ 1
+                           'mod 1
+                           'lib.math/pow 2})
+
 (def ^:private col-name
   (memoize
    (fn [col]
@@ -42,7 +52,7 @@
          [:tr.group.divide-x {:data-tr row}
           [:td.select-none.text-end.whitespace-nowrap.after:inline-block.after:w-4.group-even:bg-gray-100
            {:class "after:content-['_']"}
-           {:data-row-label row}
+           {:data-td row}
            row]
           (for [col col-names
                 :let [cell {:row row
