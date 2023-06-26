@@ -10,6 +10,10 @@
          (apply map vector)
          (take-while not-eof?))))
 
+(defn update-in! [m ks f & args]
+  {:pre [(seqable? ks) (fn? f)]}
+  (assoc! m ks (apply f (get-in m ks) args)))
+
 (def ^:private re-case #"-(\w)")
 (defn js-case [kw]
   {:pre [((some-fn keyword? string?) kw)]}
@@ -18,7 +22,7 @@
       (s/replace re-case (comp s/upper-case second))))
 
 (defmacro math-1! [& ops]
-  {:pre [(every? symbol? ops)]}
+  {:pre [(every? keyword? ops)]}
   (for [op ops
         :let [op-name (symbol op)
               x (gensym)]]

@@ -5,42 +5,58 @@
    [clojure.set :as set]
    [clojure.string :as s]
    [lib.js :refer [js-delay]]
-   [lib.prelude :refer [js-case]]))
-
-(def ^:private sep-id "-")
-(def ^:private sep-class " ")
-
-(def ^:private re-kw #"(^|#|\.)([^#.]+)")
-(def ^:private v-map {"#" [:id sep-id]
-                      "." [:class-name sep-class]})
+   [lib.prelude :refer [js-case update-in!]]))
 
 (def ^:private attr-subst {:class :class-name
                            :for :html-for})
 
-(defn parse-kw [kw]
-  {:pre [(keyword? kw)]
-   :post [(->> % :tag-name string?)]}
-  (let [key (name kw)
-        [[_ _ tag] & groups] (re-seq re-kw key)
-        grouped (for [[k v] (group-by second groups)
-                      :let [[id sep] (get v-map k)]]
-                  [id (s/join sep (map last v))])
-        {:keys [id class-name]} (into {} grouped)]
-    {:tag-name (js-case tag)
-     :id id
-     :class-name class-name}))
+(defn- parse-attrs [attrs props]
+  {:pre [(map? props)]}
+  (loop [stream props
+         acc attrs]
+    (let [[[key val] & ps] stream]
+      (cond (empty? stream) acc
+            (= key :style)
+            (recur ps
+                   (update-in! acc [:style] assoc! key val))
+            (-> key name (s/starts-with? "data-"))
+            (recur ps
+                   (update-in! acc [:dataset]
+                               assoc! (-> key name (s/replace-first "data-" ""))
+                               val))
+            :else
+            (recur ps
+                   (update-in! acc [:attrs] assoc! key val))))))
+
+(defn- parse-props [props]
+  {:pre [(seqable? props)]}
+  (let [attr? map?
+        child? (some-fn nil? seqable? int?)]
+    (loop [stream props
+           acc (transient {:attrs (transient {})
+                           :dataset (transient {})
+                           :style (transient {})
+                           :children (transient [])})]
+      (let [[p & ps] stream]
+        (cond (empty? stream) acc
+              (attr? p) (recur ps
+                               (parse-attrs acc p))
+              (child? p) (recur ps
+                                (update-in! acc [:children] conj! p))
+              :else (assert false))))))
 
 (defn- parse-children [children]
   {:pre [(seqable? children)]
-   :post [(seqable? %)]}
-  (loop [acc []
-         [c & cs] children]
-    (let [nul? (nil? c)]
+   :post [(instance? PersistentTreeMap %)]}
+  (loop [stream children
+         acc (sorted-map)]
+    (let [[c & cs] stream]
       (cond
-        (and nul? (empty? cs)) acc
-        nul? (recur acc cs)
-        (map? c) (recur (conj acc c) cs)
-        :else (recur acc (concat c cs))))))
+        (empty? stream) acc
+        (nil? c) (recur cs acc)
+        (instance? PersistentTreeMap c) (recur cs (conj acc c))
+        (map? c) (recur cs (assoc acc (:key c) c))
+        :else (assert false)))))
 
 (defmulti ^:private parse-impl #(cond (nil? %2) :nil
                                       (string? %2) :str
@@ -54,39 +70,18 @@
 (defmethod parse-impl :seq [key-idx [x & xs :as xss]]
   (if-not (keyword? x)
     (->> xss (map-indexed parse-impl) parse-children)
-    (let [{:keys [tag-name id class-name]} (parse-kw x)
-          {:keys [raw-props raw-children]
-           :or {raw-children []}} (group-by
-                                   #(if (map? %) :raw-props :raw-children)
-                                   xs)
-          props (as-> raw-props $
-                  (apply merge-with into $)
-                  (set/rename-keys $ attr-subst))
-          {:keys [key style]
-           :or {key key-idx
-                style {}}
-           :as raw-attrs} (cond-> props
-                            id (update-in
-                                [:id]
-                                #(if-some [_ %] (str id sep-id %) id))
-                            class-name (update-in
-                                        [:class-name]
-                                        #(if-some [_ %] (str class-name sep-class %) class-name))
-                            true (dissoc :tag-name :key :style))
-          {:keys [attrs data]
-           :or {attrs []
-                data []}} (group-by
-                           #(if (-> % first name (s/starts-with? "data-")) :data :attrs)
-                           raw-attrs)
-          dataset (->> data
-                       (map (fn [kv] (update-in kv [0] #(-> % name (s/replace-first "data-" "")))))
-                       (into {}))
-          children (->> raw-children (map-indexed parse-impl) parse-children)]
+    (let [tag-name (name x)
+          {:keys [dataset style]
+           raw-attrs :attrs
+           raw-children :children} (parse-props xs)
+          key (or (:key raw-attrs) key-idx)
+          attrs (-> raw-attrs (dissoc! :tag-name :key) persistent! (set/rename-keys attr-subst))
+          children (->> raw-children persistent! (map-indexed parse-impl) parse-children)]
       {:key key
        :tag-name tag-name
-       :attrs (into {} attrs)
-       :dataset dataset
-       :style style
+       :attrs attrs
+       :dataset (persistent! dataset)
+       :style (persistent! style)
        :children children})))
 
 (defn parse [tree]
@@ -115,15 +110,23 @@
     (let [el (. js/document createElement tag-name)
           el-data (.-dataset el)
           el-style (.-style el)
-          new-children (doall (for [child children
-                                    :let [{e :el
-                                           :as c} (assoc-dom (+ depth 1) child)]]
-                                (do (.appendChild el e) c)))]
+          new-children (into (sorted-map) (for [[key child] children
+                                                :let [{e :el
+                                                       :as c} (assoc-dom (inc depth) child)]]
+                                            (do (.appendChild el e)
+                                                [key c])))]
       (set-props! el attrs)
       (set-props! el-data dataset)
       (set-props! el-style style)
       (debug! (.log js/console (apply str (concat (repeat depth "->") [tag-name]))))
       (assoc tree :el el :children new-children))))
+
+(defn- replace-child! [depth old-el new]
+  {:pre [(int? depth) (map? new)]}
+  (let [{new-el :el
+         :as drawn} (assoc-dom depth new)]
+    (.replaceWith old-el new-el)
+    drawn))
 
 (defn- recon-props! [target old-props new-props]
   {:pre [(map? old-props) (map? new-props)]}
@@ -138,48 +141,35 @@
 (declare reconcile!)
 
 (defn- rec! [depth parent-el old-children new-children]
-  {:pre [(int? depth) (seqable? old-children) (seqable? new-children)]}
-  (let [old-index (->> old-children
-                       (map :key)
-                       (into #{}))
-        new-index (->> new-children
-                       (map :key)
-                       (into #{}))]
-    (loop [old-c (->> old-children (reverse) (into []))
-           new-c (->> new-children (reverse) (into []))
-           acc []]
-      (let [{old-el :el
-             old-key :key
-             :as old-child} (peek old-c)
-            {new-key :key
-             :as new-child} (peek new-c)]
-        (cond
-          (= nil old-child new-child) acc
+  {:pre [(int? depth) (instance? PersistentTreeMap old-children) (instance? PersistentTreeMap new-children)]
+   :post [(instance? PersistentTreeMap %)]}
+  (loop [old-c (->> old-children (reverse) (into []))
+         new-c (->> new-children (reverse) (into []))
+         acc (sorted-map)]
+    (let [[[old-key {old-el :el
+                     :as old-child}] & old-rest] old-c
+          [[new-key new-child] & new-rest] new-c
+          assoc-child #(assoc acc (:key %) %)]
+      (cond
+        (= nil old-child new-child) acc
 
-          (nil? old-child) (let [{new-el :el
-                                  :as drawn}
-                                 (assoc-dom depth new-child)]
-                             (.appendChild parent-el new-el)
-                             (recur old-c (pop new-c) (conj acc drawn)))
+        (nil? old-child) (let [{new-el :el
+                                :as drawn}
+                               (assoc-dom depth new-child)]
+                           (.appendChild parent-el new-el)
+                           (recur old-c new-rest (assoc-child drawn)))
 
-          (or (nil? new-child) (not (contains? new-index old-key))) (do
-                                                                      (.remove old-el)
-                                                                      (recur (pop old-c) new-c acc))
+        (or (nil? new-child) (not (contains? new-children old-key))) (do
+                                                                       (.remove old-el)
+                                                                       (recur old-rest new-c acc))
 
-          (not (contains? old-index new-key)) (let [{new-el :el
-                                                     :as drawn}
-                                                    (assoc-dom depth new-child)]
-                                                (.before old-el new-el)
-                                                (recur old-c (pop new-c) (conj acc drawn)))
+        (not (contains? old-children new-key)) (let [{new-el :el
+                                                      :as drawn}
+                                                     (assoc-dom depth new-child)]
+                                                 (.before old-el new-el)
+                                                 (recur old-c new-rest (assoc-child drawn)))
 
-          :else (recur (pop old-c) (pop new-c) (->> new-child (reconcile! depth old-child) (conj acc))))))))
-
-(defn- replace-child! [depth old-el new]
-  {:pre [(int? depth) (map? new)]}
-  (let [{new-el :el
-         :as drawn} (assoc-dom depth new)]
-    (.replaceWith old-el new-el)
-    drawn))
+        :else (recur old-rest new-rest (->> new-child (reconcile! depth old-child) assoc-child))))))
 
 (defn- reconcile! [depth
                    {old-txt :txt
@@ -211,10 +201,7 @@
             (recon-props! old-el old-attrs new-attrs)
             (recon-props! el-data old-dataset new-dataset)
             (recon-props! el-style old-style new-style)
-            (let [children (->>
-                            (rec! (+ depth 1) old-el old-children new-children)
-                            (remove nil?)
-                            doall)]
+            (let [children (rec! (inc depth) old-el old-children new-children)]
               (assoc new :children children :el old-el)))))
 
 (def ^:private jdelay (js-delay 64))
@@ -222,8 +209,7 @@
 (defn rend [root]
   {:pre [(instance? js/HTMLElement root)]}
   (let [v-dom (atom nil)
-        handle (atom nil)
-        ree! (partial reconcile! 0)]
+        recon! (partial reconcile! 0)]
     (fn [v-next]
       {:pre [(seqable? v-next)]}
       (debug! (.group js/console))
@@ -238,7 +224,7 @@
                          (debug! (.time js/console))
                          (jdelay #(do
                                     (let [parsed (parse v-next)]
-                                      (swap! v-dom ree! parsed))
+                                      (swap! v-dom recon! parsed))
                                     (debug! (.timeEnd js/console))))
                          old))))
 
