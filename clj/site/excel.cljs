@@ -49,13 +49,13 @@
         col-names (->> cols range (map col-name))]
     [:div {:class "flex flex-col items-center gap-y-4"}
      [:header {:class "select-none text-4xl"} "Excel"]
-     [:div {:class "flex flex-col w-[60rem]"}
+     [:div {:class "flex flex-col relative w-[60rem]"}
       [:hr]
       [:label {:class "inline-flex select-none"}
        [:span {:class "whitespace-nowrap before:inline-block after:inline-block before:w-2 after:w-2 before:content-['_'] after:content-['_']"}
         [:i "f"] [:span {:class "uppercase"} (str "(" (:col selected) (:row selected) ")")]]
        [:input
-        {:class "grow w-full"
+        {:class "grow w-full disabled:pointer-events-none"
          :disabled (nil? selected)
          :value (let [key (if in-cell :val :expr)]
                   (->> selected (get cells) key ->val))
@@ -76,8 +76,8 @@
          (for [row (->> rows range (map inc))]
            [:tr {:class "group divide-x"
                  :data-tr row}
-            [:td
-             {:class "select-none text-end whitespace-nowrap after:inline-block after:w-4 group-even:bg-gray-100 after:content-['_']"
+            [:th
+             {:class "absolute select-none text-end whitespace-nowrap after:inline-block after:w-4 group-even:bg-gray-100 after:content-['_']"
               :data-td row}
              row]
             (for [col col-names
@@ -86,6 +86,7 @@
               [:td {:data-row row
                     :data-col col
                     :data-cell (str col row)
+                    :class "select-none"
                     :onclick nil}
                [:label {:class "inline-flex w-full after:whitespace-pre after:cursor-ew-resize after:w-0.5 after:content-['_']"}
                 [:label {:class "inline-flex flex-col w-full after:whitespace-pre after:cursor-ns-resize after:h-0.5 after:content-['_']"}
@@ -98,5 +99,11 @@
                                    parsed (parse value)]
                                (swap! atom update-in [:cells] assoc cell parsed))}]]]])])]
 
-        [:tfoot]]]]
+        [:tfoot
+         [:tr {:class "divide-x"
+               :data-tr 0}
+          [:th]
+          (for [col col-names]
+            [:th {:class "select-none text-start uppercase"
+                  :data-th col} col])]]]]]
      [:footer 22]]))
