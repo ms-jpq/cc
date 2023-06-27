@@ -2,6 +2,11 @@
   (:require
    [clojure.string :as s]))
 
+(defn xor [& cs]
+  {:prelude [(every? boolean? cs)]}
+  (->> cs (reduce #(if %2 (inc %1) %1) 0)
+       odd?))
+
 (defn long-zip [sentenial & seqs]
   (let [rep (repeat sentenial)
         not-eof? (->> sentenial (partial identical?) (partial not-every?))]
