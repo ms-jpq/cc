@@ -10,9 +10,9 @@
          (apply map vector)
          (take-while not-eof?))))
 
-(defn update-in! [m ks f & args]
-  {:pre [(seqable? ks) (fn? f)]}
-  (assoc! m ks (apply f (get-in m ks) args)))
+(defn update! [m k f & args]
+  {:pre [(fn? f)]}
+  (assoc! m k (apply f (get m k) args)))
 
 (def ^:private re-case #"-(\w)")
 (defn js-case [kw]

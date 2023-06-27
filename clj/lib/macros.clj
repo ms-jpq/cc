@@ -1,6 +1,6 @@
 (ns lib.macros)
 
 (defmacro debug! [& xs]
-  (when false
+  (when (System/getenv "DEBUG")
     `(do
        ~@xs)))
