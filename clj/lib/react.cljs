@@ -10,6 +10,9 @@
 (def ^:private attr-subst {:class :class-name
                            :for :html-for})
 
+(def ^:private data-prefix "data-")
+(def ^:private data-prefix-len (count data-prefix))
+
 (defn- parse-attrs [attrs props]
   {:pre [(map? props)]}
   (loop [stream props
@@ -19,10 +22,10 @@
             (= key :style)
             (recur ps
                    (update! acc :style assoc! key val))
-            (-> key name (s/starts-with? "data-"))
+            (-> key name (s/starts-with? data-prefix))
             (recur ps
                    (update! acc :dataset
-                            assoc! (-> key name (s/replace-first "data-" ""))
+                            assoc! (-> key name (.substring data-prefix-len))
                             val))
             :else
             (recur ps

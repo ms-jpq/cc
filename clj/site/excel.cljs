@@ -55,7 +55,7 @@
        [:span {:class "whitespace-nowrap before:inline-block after:inline-block before:w-2 after:w-2 before:content-['_'] after:content-['_']"}
         [:i "f"] [:span {:class "uppercase"} (str "(" (:col selected) (:row selected) ")")]]
        [:input
-        {:class "grow w-full"
+        {:class "grow w-full disabled:pointer-events-none"
          :disabled (nil? selected)
          :value (let [key (if in-cell :val :expr)]
                   (->> selected (get cells) key ->val))
@@ -76,7 +76,7 @@
          (for [row (->> rows range (map inc))]
            [:tr {:class "group divide-x"
                  :data-tr row}
-            [:td
+            [:th
              {:class "select-none text-end whitespace-nowrap after:inline-block after:w-4 group-even:bg-gray-100 after:content-['_']"
               :data-td row}
              row]
@@ -86,6 +86,7 @@
               [:td {:data-row row
                     :data-col col
                     :data-cell (str col row)
+                    :class "select-none"
                     :onclick nil}
                [:label {:class "inline-flex w-full after:whitespace-pre after:cursor-ew-resize after:w-0.5 after:content-['_']"}
                 [:label {:class "inline-flex flex-col w-full after:whitespace-pre after:cursor-ns-resize after:h-0.5 after:content-['_']"}
