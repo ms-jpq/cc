@@ -50,7 +50,7 @@
                  (into {} $))]
     [(str/trim value) params]))
 
-(defn- parse-exchange [exchange]
+(defn- parse-request [exchange]
   {:pre [(instance? HttpExchange exchange)]}
   (let [uri (.getRequestURI exchange)
         headers (->> exchange .getRequestHeaders parse-headers)
@@ -77,14 +77,18 @@
     (handle [_ exchange]
       {:pre [(instance? HttpExchange exchange)]}
       (try
-        (let [request (parse-exchange exchange)
+        (let [request (parse-request exchange)
               rsp-headers (.getResponseHeaders exchange)
+              rsp-body (.getResponseBody exchange)
               {:keys [status headers body]
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
           (.sendResponseHeaders exchange (int status) 0)
-          (when body
-            (.. exchange getResponseBody (write body))))
+          (cond body
+                (nil? nil)
+                bytes? (.write rsp-body body)
+                (string? body) (->> body .getBytes (.write rsp-body))
+                :else (assert false body)))
         (catch Exception e
           (log/error e)
           (let [msg (-> e .getMessage .getBytes)]
