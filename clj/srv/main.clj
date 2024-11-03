@@ -8,7 +8,7 @@
 (defn- handler [request]
   {:pre [(map? request)]}
   (println request)
-  {:status 200})
+  {})
 
 (defn -main [& args]
   {:pre [(seq? args)]}
