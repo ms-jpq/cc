@@ -8,7 +8,7 @@
    [java.nio.charset StandardCharsets]
    [java.util.concurrent Executors]))
 
-(def ^:private utf-8 StandardCharsets/UTF_8)
+(def ^:private utf-8 (str StandardCharsets/UTF_8))
 
 (defn- parse-addr [addr]
   {:pre [(instance? InetSocketAddress addr)]}
@@ -55,7 +55,7 @@
   (let [uri (.getRequestURI exchange)
         headers (->> exchange .getRequestHeaders parse-headers)
         [content-type {:keys [charset boundary]
-                       :or {charset (str utf-8)}}] (parse-header-params :content-type headers)]
+                       :or {charset utf-8}}] (parse-header-params :content-type headers)]
     {:local-addr (-> exchange .getLocalAddress parse-addr)
      :remote-addr (-> exchange .getRemoteAddress parse-addr)
      :http-version (.getProtocol exchange)
@@ -88,12 +88,12 @@
                 (bytes? body) (.write rsp-body body)
                 (string? body) (->> body .getBytes (.write rsp-body))
                 :else (assert false body)))
-        (catch Exception e
+        (catch ClassNotFoundException e
           (log/error e)
-          (let [msg (-> e .getMessage .getBytes)]
-            (doto exchange
-              (.sendResponseHeaders 500 0)
-              (.. getResponseBody (write msg)))))
+          (doto exchange
+            (.. getResponseHeaders (add "content-type" "text/plain; charset=utf-8"))
+            (.sendResponseHeaders 500 0)
+            (.. getResponseBody (write (.. e getMessage getBytes)))))
         (finally
           (.close exchange))))))
 
