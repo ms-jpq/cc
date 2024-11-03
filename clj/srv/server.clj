@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log])
   (:import
-   [com.sun.net.httpserver HttpExchange HttpHandler HttpServer]
+   [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
+   [java.io BufferedReader InputStreamReader]
    [java.net InetSocketAddress URLDecoder]
    [java.nio.charset StandardCharsets]
    [java.util.concurrent Executors]))
@@ -22,26 +23,53 @@
 
 (defn- parse-query [query-string]
   {:pre [((some-fn string? nil?) query-string)]}
-  (->> (str/split query-string #"&")
+  (->> (str/split (or query-string "") #"&")
        (remove str/blank?)
        (map #(let [[k v] (map uri-decode (str/split % #"=" 2))]
                [(keyword k) v]))
        (into {})))
 
+(defn- parse-headers [headers]
+  {:pre [(instance? Headers headers)]}
+  (->> headers
+       (map (fn [[k v]] [(-> k .toLowerCase keyword) (into [] v)]))
+       (into {})))
+
+(defn parse-header-params [headers]
+  {:pre [(map? headers)]}
+  (let [header (-> headers :content-type last)
+        [value raw-params] (-> header
+                               (or "")
+                               (str/split #";" 2))
+        params (as-> raw-params $
+                 (or $ "")
+                 (str/split $ #"\s+")
+                 (remove str/blank? $)
+                 (map #(str/split % #"=" 2) $)
+                 (map (fn [[k v]] [(-> k .toLowerCase keyword) v]) $)
+                 (into {} $))]
+    [(str/trim value) params]))
+
 (defn- parse-exchange [exchange]
   {:pre [(instance? HttpExchange exchange)]}
-  (let [uri (.getRequestURI exchange)]
+  (let [uri (.getRequestURI exchange)
+        headers (->> exchange .getRequestHeaders parse-headers)
+        [content-type {:keys [charset boundary]
+                       :or {charset (str utf-8)}}] (parse-header-params headers)]
     {:local-addr (-> exchange .getLocalAddress parse-addr)
      :remote-addr (-> exchange .getRemoteAddress parse-addr)
      :http-version (.getProtocol exchange)
      :method (.. exchange getRequestMethod toUpperCase)
      :path (.getPath uri)
      :query (-> uri .getQuery parse-query)
-     :headers (->> exchange
-                   .getRequestHeaders
-                   (map (fn [[k v]] [(-> k .toLowerCase keyword) (into [] v)]))
-                   (into {}))
-     :body (.getRequestBody exchange)}))
+     :headers headers
+     :content-type content-type
+     :charset charset
+     :boundary boundary
+     :body (-> exchange
+               .getRequestBody
+               (InputStreamReader. charset)
+               (BufferedReader.))}))
 
 (defn- make-handler [process]
   {:pre [(fn? process)]}

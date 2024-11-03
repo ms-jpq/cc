@@ -1,13 +1,14 @@
 (ns srv.main
   (:require
    [clojure.data.json :refer [read-str]]
+   [clojure.pprint :as pp]
    [clojure.tools.cli :refer [parse-opts]]
    [clojure.tools.logging :as log]
    [srv.server :refer [run]]))
 
 (defn- handler [request]
   {:pre [(map? request)]}
-  (println request)
+  (pp/pprint request)
   {})
 
 (defn -main [& args]
