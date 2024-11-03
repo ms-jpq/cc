@@ -64,7 +64,6 @@
      :query (-> uri .getQuery parse-query)
      :headers headers
      :content-type content-type
-     :charset charset
      :boundary boundary
      :body (-> exchange
                .getRequestBody
@@ -91,7 +90,7 @@
         (catch ClassNotFoundException e
           (log/error e)
           (doto exchange
-            (.. getResponseHeaders (add "content-type" "text/plain; charset=utf-8"))
+            (.. getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
             (.sendResponseHeaders 500 0)
             (.. getResponseBody (write (.. e getMessage getBytes)))))
         (finally
