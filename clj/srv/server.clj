@@ -35,9 +35,9 @@
        (map (fn [[k v]] [(-> k .toLowerCase keyword) (into [] v)]))
        (into {})))
 
-(defn parse-header-params [headers]
-  {:pre [(map? headers)]}
-  (let [header (-> headers :content-type last)
+(defn parse-header-params [name headers]
+  {:pre [(keyword? name) (map? headers)]}
+  (let [header (-> headers name last)
         [value raw-params] (-> header
                                (or "")
                                (str/split #";" 2))
@@ -55,7 +55,7 @@
   (let [uri (.getRequestURI exchange)
         headers (->> exchange .getRequestHeaders parse-headers)
         [content-type {:keys [charset boundary]
-                       :or {charset (str utf-8)}}] (parse-header-params headers)]
+                       :or {charset (str utf-8)}}] (parse-header-params :content-type headers)]
     {:local-addr (-> exchange .getLocalAddress parse-addr)
      :remote-addr (-> exchange .getRemoteAddress parse-addr)
      :http-version (.getProtocol exchange)
@@ -84,9 +84,8 @@
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
           (.sendResponseHeaders exchange (int status) 0)
-          (cond body
-                (nil? nil)
-                bytes? (.write rsp-body body)
+          (cond (nil? body) nil
+                (bytes? body) (.write rsp-body body)
                 (string? body) (->> body .getBytes (.write rsp-body))
                 :else (assert false body)))
         (catch Exception e
