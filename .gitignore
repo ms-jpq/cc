@@ -1,6 +1,7 @@
 .clj-*/
 .cpcache/
+.git/
 .lsp/
 out/
-target/
 package-lock.json
+target/

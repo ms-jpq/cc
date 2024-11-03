@@ -1,5 +1,8 @@
 {:paths ["clj" "target"]
- :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}}
+ :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}
+        org.clojure/data.json {:mvn/version "RELEASE"}
+        org.clojure/tools.cli {:mvn/version "RELEASE"}
+        org.clojure/tools.logging {:mvn/version "RELEASE"}}
  :aliases {:build {:main-opts ["--main" "cljs.main"
                                "--compile-opts" "build.co.edn"
                                "--compile" "site.index"]}

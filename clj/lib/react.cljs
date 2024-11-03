@@ -4,7 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as s]
-   [lib.js :refer [js-delay]]
+   [lib.js :refer [js-debounce]]
    [lib.prelude :refer [js-case update!]]))
 
 (def ^:private attr-subst {:class :class-name
@@ -228,7 +228,7 @@
               (debug! "|3|")
               (assoc new :children children :el old-el)))))
 
-(def ^:private jdelay (js-delay 64))
+(def ^:private jdebounce (js-debounce 64))
 
 (defn rend [root]
   {:pre [(instance? js/HTMLElement root)]}
@@ -246,7 +246,7 @@
                          new-tree)
                        (do
                          (debug! (.time js/console))
-                         (jdelay #(do
+                         (jdebounce #(do
                                     (let [parsed (parse v-next)]
                                       (swap! v-dom recon! parsed))
                                     (debug! (.timeEnd js/console))))
