@@ -4,8 +4,7 @@
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer]
    [java.net InetSocketAddress URLDecoder]
    [java.nio.charset StandardCharsets]
-   [java.util.concurrent Executors]
-   ))
+   [java.util.concurrent Executors]))
 
 (def ^:private utf-8 StandardCharsets/UTF_8)
 
@@ -25,23 +24,15 @@
 
 (defn- parse-exchange [exchange]
   {:pre [(instance? HttpExchange exchange)]}
-  (let [local-addr (.getLocalAddress exchange)
-        remote-addr (.getRemoteAddress exchange)
-        http-version (.getProtocol exchange)
-        method (.. exchange getRequestMethod toUpperCase)
-        uri (.getRequestURI exchange)
-        query (-> uri .getQuery parse-query)
-        headers (-> exchange .getRequestHeaders
-                    (into {}))
-        body (.getRequestBody exchange)]
-    {:local-addr local-addr
-     :remote-addr remote-addr
-     :http-version http-version
-     :method method
+  (let [uri (.getRequestURI exchange)]
+    {:local-addr (.getLocalAddress exchange)
+     :remote-addr (.getRemoteAddress exchange)
+     :http-version (.getProtocol exchange)
+     :method (.. exchange getRequestMethod toUpperCase)
      :path (.getPath uri)
-     :query query
-     :headers headers
-     :body body}))
+     :query (-> uri .getQuery parse-query)
+     :headers (-> exchange .getRequestHeaders (into {}))
+     :body (.getRequestBody exchange)}))
 
 (defn- make-handler [process]
   {:pre [(fn? process)]}
@@ -50,8 +41,7 @@
       {:pre [(instance? HttpExchange exchange)]}
       (try
         (let [request (parse-exchange exchange)
-              response (process request)
-              {:keys [status headers body]} response]
+              {:keys [status headers body]} (process request)]
           (doto exchange
             (.getResponseHeaders (doseq [[k v] headers] (.add k v)))
             (.sendResponseHeaders (or status 200) 0)
@@ -69,7 +59,7 @@
   (let [addr (InetSocketAddress. port)
         server (HttpServer/create addr 0)]
     (doto server
-        (.createContext "/" (make-handler process))
-        (.setExecutor (Executors/newCachedThreadPool))
-        (.start))
+      (.createContext "/" (make-handler process))
+      (.setExecutor (Executors/newCachedThreadPool))
+      (.start))
     server))
