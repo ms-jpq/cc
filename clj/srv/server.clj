@@ -87,7 +87,7 @@
                 (bytes? body) (.write rsp-body body)
                 (string? body) (->> body .getBytes (.write rsp-body))
                 :else (assert false body)))
-        (catch ClassNotFoundException e
+        (catch Exception e
           (log/error e)
           (doto exchange
             (.. getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
