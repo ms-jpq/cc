@@ -11,18 +11,21 @@
 (def ^:private utf-8 (str StandardCharsets/UTF_8))
 
 (defn- parse-addr [addr]
-  {:pre [(instance? InetSocketAddress addr)]}
+  {:pre [(instance? InetSocketAddress addr)]
+   :post [(map? %)]}
   {:ip (.getHostString addr)
    :port (.getPort addr)})
 
 (defn- uri-decode [txt]
-  {:pre [(string? txt)]}
+  {:pre [(string? txt)]
+   :post [(string? %)]}
   (try
     (URLDecoder/decode txt utf-8)
     (catch Exception _ txt)))
 
 (defn- parse-query [query-string]
-  {:pre [((some-fn string? nil?) query-string)]}
+  {:pre [((some-fn string? nil?) query-string)]
+   :post [(map? %)]}
   (->> (str/split (or query-string "") #"&")
        (remove str/blank?)
        (map #(let [[k v] (map uri-decode (str/split % #"=" 2))]
@@ -30,13 +33,15 @@
        (into {})))
 
 (defn- parse-headers [headers]
-  {:pre [(instance? Headers headers)]}
+  {:pre [(instance? Headers headers)]
+   :post [(map? %)]}
   (->> headers
        (map (fn [[k v]] [(-> k .toLowerCase keyword) (into [] v)]))
        (into {})))
 
 (defn parse-header-params [name headers]
-  {:pre [(keyword? name) (map? headers)]}
+  {:pre [(keyword? name) (map? headers)]
+   :post [(-> % first keyword?) (-> % last map?)]}
   (let [header (-> headers name last)
         [value raw-params] (-> header
                                (or "")
@@ -51,7 +56,8 @@
     [(str/trim value) params]))
 
 (defn- parse-request [exchange]
-  {:pre [(instance? HttpExchange exchange)]}
+  {:pre [(instance? HttpExchange exchange)]
+   :post [(map? %)]}
   (let [uri (.getRequestURI exchange)
         headers (->> exchange .getRequestHeaders parse-headers)
         [content-type {:keys [charset boundary]
@@ -97,7 +103,8 @@
           (.close exchange))))))
 
 (defn run [port process]
-  {:pre [(int? port) (fn? process)]}
+  {:pre [(int? port) (fn? process)]
+   :post [(instance? HttpServer %)]}
   (let [addr (InetSocketAddress. port)
         server (HttpServer/create addr 0)]
     (doto server

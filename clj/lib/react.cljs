@@ -4,13 +4,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as s]
+   [lib.hiccup :refer [attr-subst data-prefix]]
    [lib.js :refer [js-debounce]]
    [lib.prelude :refer [js-case update!]]))
 
-(def ^:private attr-subst {:class :class-name
-                           :for :html-for})
-
-(def ^:private data-prefix "data-")
 (def ^:private data-prefix-len (count data-prefix))
 
 (defn- parse-attrs [attrs props]
@@ -247,9 +244,9 @@
                        (do
                          (debug! (.time js/console))
                          (jdebounce #(do
-                                    (let [parsed (parse v-next)]
-                                      (swap! v-dom recon! parsed))
-                                    (debug! (.timeEnd js/console))))
+                                       (let [parsed (parse v-next)]
+                                         (swap! v-dom recon! parsed))
+                                       (debug! (.timeEnd js/console))))
                          old))))
 
       (debug! (.groupEnd js/console))
