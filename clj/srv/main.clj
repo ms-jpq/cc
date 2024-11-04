@@ -22,6 +22,8 @@
   (let [argp [["-h" "--help"]
               ["-r" "--root ROOT"
                :default (System/getProperty "user.dir")]
+              ["-d" "--data DATA"
+               :default-fn :root]
               ["-p" "--port PORT"
                :default 8080
                :parse-fn #(Integer/parseInt %)
@@ -30,10 +32,10 @@
                :default prefix
                :validate [#(str/starts-with? % prefix)]]]
 
-        {{:keys [help port root]} :options
+        {{:keys [help port prefix root data]} :options
          summary :summary
          errors :errors} (parse-opts args argp)
-        handler (make-handler "/" root root)]
+        handler (make-handler prefix root data)]
     (cond help (println summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
