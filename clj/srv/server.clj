@@ -41,7 +41,7 @@
 
 (defn parse-header-params [name headers]
   {:pre [(keyword? name) (map? headers)]
-   :post [(-> % first keyword?) (-> % last map?)]}
+   :post [(-> % first (some-fn keyword? nil?)) (-> % last map?)]}
   (let [header (-> headers name last)
         [value raw-params] (-> header
                                (or "")

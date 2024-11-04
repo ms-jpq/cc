@@ -7,6 +7,8 @@
    [clojure.tools.logging :as log]
    [srv.server :refer [run]]))
 
+(def ^:private prefix "/")
+
 (defn- make-handler [prefix root data]
   {:pre [(string? prefix) (string? root) (string? data)]}
   (fn [{:keys [path]
@@ -20,17 +22,18 @@
   (let [argp [["-h" "--help"]
               ["-r" "--root ROOT"
                :default (System/getProperty "user.dir")]
-              ["-d" "--data DATA"]
               ["-p" "--port PORT"
                :default 8080
                :parse-fn #(Integer/parseInt %)
                :validate [#(< 0 % 0x10000)]]
-              ["--prefix PREFIX"
-               :default "/"]]
-        {{:keys [help port prefix root data]} :options
+              [nil "--prefix PREFIX"
+               :default prefix
+               :validate [#(str/starts-with? % prefix)]]]
+
+        {{:keys [help port root]} :options
          summary :summary
          errors :errors} (parse-opts args argp)
-        handler (make-handler prefix root data)]
+        handler (make-handler "/" root root)]
     (cond help (println summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
