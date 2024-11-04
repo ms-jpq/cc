@@ -36,7 +36,7 @@
          summary :summary
          errors :errors} (parse-opts args argp)
         handler (make-handler prefix root data)]
-    (cond help (println summary)
+    (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
           :else (run port handler))))

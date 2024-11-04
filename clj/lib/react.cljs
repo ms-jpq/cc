@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as s]
+   [clojure.tools.logging :as log]
    [lib.hiccup :refer [attr-subst data-prefix]]
    [lib.js :refer [js-debounce]]
    [lib.prelude :refer [js-case update!]]))
@@ -166,23 +167,23 @@
                                 :as drawn}
                                (assoc-dom depth new-child)]
                            (.appendChild parent-el new-el)
-                           (debug! (println "1<"))
+                           (log/debug "1<")
                            (recur old-c new-rest (conj acc drawn)))
 
         (or (nil? new-child) (not (contains? new-keys old-key))) (do
                                                                    (.remove old-el)
-                                                                   (debug! (println "2<"))
+                                                                   (log/debug "2<")
                                                                    (recur old-rest new-c acc))
 
         (not (contains? old-keys new-key)) (let [{new-el :el
                                                   :as drawn}
                                                  (assoc-dom depth new-child)]
                                              (.before old-el new-el)
-                                             (debug! (println "3<"))
+                                             (log/debug "3<")
                                              (recur old-c new-rest (conj acc drawn)))
 
         :else (do
-                (debug! (println "4<"))
+                (log/debug "4<")
                 (recur old-rest new-rest (->> new-child (reconcile! depth old-child) (conj acc))))))))
 
 (defn- reconcile! [depth
@@ -196,14 +197,14 @@
   {:pre [(map? old) (map? new)]}
   (cond
     (or (nil? old-tag) (nil? new-tag)) (do
-                                         (debug! (println "|1|"))
+                                         (log/debug "|1|")
                                          (cond (= old-txt new-txt) old
                                                (some? old-txt) (do (set! old-el -data new-txt)
                                                                    (assoc new :el old-el))
                                                :else (replace-child! depth old-el new)))
 
     (not= old-tag new-tag) (do
-                             (debug! (println "|2|"))
+                             (log/debug "|2|")
                              (replace-child! depth old-el new))
 
     :else (let [{old-attrs :attrs
