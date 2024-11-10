@@ -49,7 +49,7 @@
            closed (atom false)]
        (concat indented
                ["<" tag]
-               (for [v (concat xs [[]])
+               (for [v xs
                      :let [map (map? v)
                            st (walk-impl (inc depth) v)]
                      :when (not (and @closed map))]
@@ -57,13 +57,15 @@
                    st
                    (do (reset! closed true)
                        (cons ">" st))))
-               indented
-               ["</" tag ">"])))))
+               (lazy-seq
+                (if @closed
+                  (concat indented ["</" tag ">"])
+                  ["/>"])))))))
 
 (defn walk [hiccup]
   {:pre [(seqable? hiccup)]}
   (drop 1 (walk-impl 0 hiccup)))
 
-(def hiccup [:p [:div {:class "hi"} [:span {:class "hi"} 2 "adsf"]] [:table]])
+(def hiccup [:p [:div {:class "hi"} [:span {:class "hi"} 2 "adsf"]] [:table {:class "hi"}]])
 
 (print (str/join "" (walk hiccup)))
