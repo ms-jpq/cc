@@ -47,9 +47,9 @@
        (concat indented
                ["<" tag]
                (for [v xs
-                     :let [map (map? v)
-                           st (walk (inc depth) v)]
-                     :when (not (and @closed map))]
+                     :let [map (map? v)]
+                     :when (not (and @closed map))
+                     :let [st (walk (inc depth) v)]]
                  (if (or @closed map)
                    st
                    (do (reset! closed true)
