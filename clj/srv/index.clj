@@ -21,19 +21,24 @@
 
 (defn- walk [root dir]
   {:pre [(path? root) (path? dir)]}
-  (let [st (Files/newDirectoryStream dir)]
-    (for [path st
-          :when (Files/isReadable path)
-          :let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]
-                 :as attrs} (attributes path)]
-          :when (not is-symbolic-link)]
-      {:path path
-       :size size
-       :m-time last-modified-time
-       :c-time creation-time})))
+  (let [que (atom [])
+        st (Files/newDirectoryStream dir)]
+    (concat
+     (for [path st
+           :when (Files/isReadable path)
+           :let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (attributes path)]
+           :when (or (not is-symbolic-link) 1)]
+       (if is-directory
+         (do (swap! que conj path)
+             nil)
+         {:path path
+          :size size
+          :m-time last-modified-time
+          :c-time creation-time}))
+     (lazy-seq (mapcat (partial walk root) @que)))))
 
 (defn os-walk [root dir]
   {:pre [(string? root) (string? dir)]}
-  (walk (path root) (path dir)))
+  (filter (complement nil?) (walk (path root) (path dir))))
 
-(clojure.pprint/pprint (os-walk "." "."))
+(clojure.pprint/pprint (map (comp str :path) (os-walk "." ".")))

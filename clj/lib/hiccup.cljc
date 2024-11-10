@@ -38,26 +38,25 @@
   (for [[k v] attrs] (str " " (name k) "=\"" (encode v) "\"")))
 
 (defmethod walk :seq [depth [x & xs :as xss]]
-  (flatten
-   (if-not (keyword? x)
-     (for [v xss] (walk (inc depth) v))
-     (let [tag (name x)
-           indented (indent depth)
-           closed (atom false)]
-       (concat indented
-               ["<" tag]
-               (for [v xs
-                     :let [map (map? v)]
-                     :when (not (and @closed map))
-                     :let [st (walk (inc depth) v)]]
-                 (if (or @closed map)
-                   st
-                   (do (reset! closed true)
-                       (cons ">" st))))
-               (lazy-seq
-                (if @closed
-                  (concat indented ["</" tag ">"])
-                  ["/>"])))))))
+  (if-not (keyword? x)
+    (mapcat (partial walk (inc depth)) xss)
+    (let [tag (name x)
+          indented (indent depth)
+          closed (atom false)]
+      (flatten (concat indented
+                       ["<" tag]
+                       (for [v xs
+                             :let [map (map? v)]
+                             :when (not (and @closed map))
+                             :let [st (walk (inc depth) v)]]
+                         (if (or @closed map)
+                           st
+                           (do (reset! closed true)
+                               (cons ">" st))))
+                       (lazy-seq
+                        (if @closed
+                          (concat indented ["</" tag ">"])
+                          ["/>"])))))))
 
 (defn html [hiccup]
   {:pre [(seqable? hiccup)]}
