@@ -1,4 +1,6 @@
-(ns lib.interop)
+(ns lib.interop
+  (:import
+   [java.util.stream Stream]))
 
 (defmacro ->fn [f]
   `(reify java.util.function.Function
@@ -14,3 +16,7 @@
   `(reify java.util.function.Predicate
      (test [_ arg#]
        (~f arg#))))
+
+(defn st->seq [st]
+  {:pre [(instance? Stream st)]}
+  (-> st .iterator iterator-seq))
