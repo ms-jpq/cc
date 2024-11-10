@@ -18,7 +18,7 @@
       {})))
 
 (defn -main [& args]
-  {:pre [(seq? args)]}
+  {:pre [(seqable? args)]}
   (let [argp [["-h" "--help"]
               ["-r" "--root ROOT"
                :default (System/getProperty "user.dir")]
