@@ -7,6 +7,11 @@
      (apply [_ arg#]
        (~f arg#))))
 
+(defmacro ->bi [f]
+  `(reify java.util.function.BinaryOperator
+     (apply [_ arg1# arg2#]
+       (~f arg1# arg2#))))
+
 (defmacro ->supp [f]
   `(reify java.util.function.Supplier
      (get [_]
