@@ -19,8 +19,8 @@
       (let [path (lib/remove-prefix path prefix)
             request (assoc request :path path)]
         (cond
-          (= path idx/path-glob) (idx/handler-glob request)
-          :else (idx/handler-static request))))))
+          (= path idx/path-glob) (idx/handler-glob root data request)
+          :else (idx/handler-static root data request))))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
