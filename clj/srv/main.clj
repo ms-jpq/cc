@@ -14,8 +14,7 @@
         :as request}]
     (let [sections (str/split path #"/+")]
       (pp/pprint request)
-      (throw (RuntimeException. "not implemented"))
-      {:body {:hi "you"}})))
+      {:body "hi"})))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}

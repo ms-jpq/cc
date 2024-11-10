@@ -82,15 +82,18 @@
          (bytes? %2) :bytes
          (string? %2) :str
          (map? %2) :map
-         (seqable? %2) :seq
-         :else :data))
+         (seqable? %2) :seq))
 
 (defmethod blit :nil [_ _] nil)
 (defmethod blit :bytes [st b] (.write st b))
 (defmethod blit :str [st s] (.write st s))
 (defmethod blit :seq [st seq] (doseq [v seq] (blit st v)))
 (defmethod blit :map [st m] (json/write m st :escape-unicode false :escape-slash false))
-(defmethod blit :data [st d] (->> d datafy (blit st)))
+
+(defn- blit-stream [exchange body]
+  {:pre [(instance? HttpExchange exchange)]}
+  (with-open [st (-> exchange .getResponseBody io/writer)]
+    (blit st body)))
 
 (defn- make-handler [process]
   {:pre [(fn? process)]}
@@ -103,15 +106,15 @@
               {:keys [status headers body]
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
-          (.sendResponseHeaders exchange (int status) 0)
-          (with-open [st (-> exchange .getResponseBody io/writer)]
-            (blit st body)))
+          (doto exchange
+            (.sendResponseHeaders (int status) 0)
+            (blit-stream body)))
         (catch Exception e
           (log/error e)
           (doto exchange
             (.. getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
             (.sendResponseHeaders 500 0)
-            (-> .getResponseBody (blit (datafy e)))))
+            (blit-stream (datafy e))))
         (finally
           (.close exchange))))))
 
