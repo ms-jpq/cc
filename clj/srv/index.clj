@@ -48,9 +48,6 @@
         gen (Stream/generate
              (ip/->supp #(let [{:keys [path]} (peek @que)]
                            (swap! que pop)
-                           (when-not @closed
-                             (reset! closed true)
-                             (.close st))
                            path)))
         st2 (.. gen
                 (takeWhile (ip/->pred (complement nil?)))
@@ -65,4 +62,5 @@
       .iterator
       iterator-seq))
 
-(clojure.pprint/pprint (walk "." "."))
+(clojure.pprint/pprint (doseq [x (walk "." ".")]
+                         nil))
