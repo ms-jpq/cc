@@ -35,22 +35,22 @@
 
 (defn- os-walk [dir]
   {:pre [(path? dir)]}
-  (let [que (atom ())
+  (let [que (atom [])
         closed (atom false)
         st (-> dir
                Files/list
                (.filter (ip/->pred #(Files/isReadable %)))
-               (.map (ip/->fn #(let [parsed (parse %)]
-                                 (swap! que cons %)
+               (.map (ip/->fn #(let [{:keys [dir?]
+                                      :as parsed} (parse %)]
+                                 (when dir?
+                                   (swap! que conj %))
                                  parsed))))
         gen (Stream/generate
-             (ip/->supp #(let [{:keys [path]
-                                :as p} (peek @que)]
+             (ip/->supp #(let [{:keys [path]} (peek @que)]
+                           (swap! que pop)
                            (when-not @closed
                              (reset! closed true)
                              (.close st))
-                           (swap! que pop)
-                           (clojure.pprint/pprint p)
                            path)))
         st2 (.. gen
                 (takeWhile (ip/->pred (complement nil?)))
