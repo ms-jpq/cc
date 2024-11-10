@@ -2,8 +2,13 @@
   (:require
    [clojure.pprint :as pp]
    [lib.interop :as ip]
-   [srv.fs :as fs]))
+   [srv.fs :as fs])
+  (:import [java.util UUID]))
 
-(doseq [x (ip/st->seq (fs/glob "." "." "*"))]
-  (pp/pprint (str (:path x)))
+(def path-glob (str (UUID/randomUUID)))
+
+(defn handler-glob [])
+
+(defn handler-static [{:keys [path]
+                       :as request}]
   nil)

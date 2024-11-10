@@ -1,10 +1,10 @@
 (ns srv.main
   (:require
-   [clojure.pprint :as pp]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [clojure.tools.logging :as log]
-   [lib.server :as srv]))
+   [lib.server :as srv]
+   [srv.index :as idx]))
 
 (def ^:private path-sep "/")
 
@@ -15,8 +15,11 @@
     (if-not (str/starts-with? path prefix)
       {:status 404
        :body "Prefix Mismatch"}
-      (let [path (subs path (count prefix))]
-        {:body "hi"}))))
+      (let [path (subs path (count prefix))
+            request (assoc request :path path)]
+        (cond
+          (= path idx/path-glob) (idx/handler-glob request)
+          :else (idx/handler-static request))))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
@@ -31,7 +34,7 @@
                :validate [#(< 0 % 0x10000)]]
               [nil "--prefix PREFIX"
                :default path-sep
-               :validate [#((every-pred str/starts-with? str/ends-with?) % path-sep)]]]
+               :validate [#(str/starts-with? % path-sep) #(str/ends-with? % path-sep)]]]
 
         {{:keys [help port prefix root data]} :options
          summary :summary
