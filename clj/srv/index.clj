@@ -4,7 +4,7 @@
    [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
-   [java.nio.file Files Path Paths LinkOption]
+   [java.nio.file Files LinkOption Path]
    [java.util.stream Stream]))
 
 (def ^:private path? (partial instance? Path))
@@ -12,6 +12,10 @@
 (defn- path [path & paths]
   {:pre [(string? path)]}
   (Path/of path (into-array String paths)))
+
+(defn- canonicalize [path]
+  {:pre [(path? path)]}
+  (.toRealPath path (into-array LinkOption [])))
 
 (defn- attributes [path]
   {:pre [(path? path)]
@@ -27,13 +31,13 @@
   (let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (attributes path)]
     {:path path
      :link (when is-symbolic-link
-             (.toRealPath path (into-array LinkOption [])))
+             (canonicalize path))
      :dir? is-directory
      :size size
      :m-time last-modified-time
      :c-time creation-time}))
 
-(defn- os-walk [dir]
+(defn- stream-dir [dir]
   {:pre [(path? dir)]}
   (let [que (atom [])
         st (-> dir
@@ -53,15 +57,17 @@
                            path)))
         st2 (.. gen
                 (takeWhile (ip/->pred (complement nil?)))
-                (flatMap (ip/->fn os-walk)))]
+                (flatMap (ip/->fn stream-dir)))]
     (Stream/concat st st2)))
 
 (defn walk [root dir]
   {:pre [(string? root) (string? dir)]}
-  (-> dir
-      path
-      os-walk
-      ip/st->seq))
+  (let [real-root (-> root path canonicalize)]
+    (-> dir
+        path
+        stream-dir
+        (.filter (ip/->pred (comp (some-fn nil? #(.startsWith % real-root)) :link)))
+        ip/st->seq)))
 
 (doseq [x (walk "." ".")]
   (clojure.pprint/pprint (str (:path x)))
