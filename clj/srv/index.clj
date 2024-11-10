@@ -36,7 +36,6 @@
 (defn- os-walk [dir]
   {:pre [(path? dir)]}
   (let [que (atom [])
-        closed (atom false)
         st (-> dir
                Files/list
                (.filter (ip/->pred #(Files/isReadable %)))
@@ -44,14 +43,13 @@
                                       :as parsed} (parse %)]
                                  (when dir?
                                    (swap! que conj %))
-                                 parsed))))
+                                 parsed)))
+               Stream/of
+               (.flatMap (ip/->fn identity)))
         gen (Stream/generate
              (ip/->supp #(let [path (peek @que)]
                            (when-not (nil? path)
                              (swap! que pop))
-                           (when-not @closed
-                             (reset! closed true)
-                             (.close st))
                            path)))
         st2 (.. gen
                 (takeWhile (ip/->pred (complement nil?)))
@@ -66,5 +64,5 @@
       ip/st->seq))
 
 (doseq [x (walk "." ".")]
-  ; (clojure.pprint/pprint (:path x))
+  (clojure.pprint/pprint (str (:path x)))
   nil)
