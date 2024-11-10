@@ -50,9 +50,10 @@
        (concat indented
                ["<" tag]
                (for [v (concat xs [[]])
-                     :let [st (walk-impl (inc depth) v)]
-                     :when (not (and @closed (map? v)))]
-                 (if (or @closed (map? v))
+                     :let [map (map? v)
+                           st (walk-impl (inc depth) v)]
+                     :when (not (and @closed map))]
+                 (if (or @closed map)
                    st
                    (do (reset! closed true)
                        (cons ">" st))))
