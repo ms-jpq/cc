@@ -1,7 +1,6 @@
 (ns site.index
   (:require
-   [lib.react :refer [rend]]
-   [site.excel :refer [excel]]))
+   [lib.react :as react]))
 
 (enable-console-print!)
 (.clear js/console)
@@ -16,9 +15,9 @@
   (when-let [main (-> js/document
                       .-body
                       (.querySelector "main"))]
-    (rend main)))
+    (react/rend main)))
 
-(add-watch state nil #(render! (excel %2 %4)))
+(add-watch state nil #(render! []))
 (add-watch state :debug #(cljs.pprint/pprint %4))
 (remove-watch state :debug)
 (swap! state identity)

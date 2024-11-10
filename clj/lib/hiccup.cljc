@@ -23,11 +23,12 @@
   {:pre [(int? n)]}
   (cons "\n" (repeat (* 2 n) " ")))
 
-(defmulti ^:private walk #(cond (nil? %2) :nil
-                                (string? %2) :str
-                                (number? %2) :num
-                                (map? %2) :map
-                                (seqable? %2) :seq))
+(defmulti ^:private walk
+  #(cond (nil? %2) :nil
+         (string? %2) :str
+         (number? %2) :num
+         (map? %2) :map
+         (seqable? %2) :seq))
 
 (defmethod walk :nil [_ _] nil)
 (defmethod walk :str [depth s] (concat (indent depth) [(escape s)]))

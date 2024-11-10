@@ -2,9 +2,9 @@
   (:require
    [clojure.pprint :as pp]
    [clojure.string :as str]
-   [clojure.tools.cli :refer [parse-opts]]
+   [clojure.tools.cli :as cli]
    [clojure.tools.logging :as log]
-   [lib.server :refer [run]]))
+   [lib.server :as srv]))
 
 (def ^:private prefix "/")
 
@@ -14,7 +14,8 @@
         :as request}]
     (let [sections (str/split path #"/+")]
       (pp/pprint request)
-      {})))
+      (throw (RuntimeException. "not implemented"))
+      {:body {:hi "you"}})))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
@@ -33,9 +34,9 @@
 
         {{:keys [help port prefix root data]} :options
          summary :summary
-         errors :errors} (parse-opts args argp)
+         errors :errors} (cli/parse-opts args argp)
         handler (make-handler prefix root data)]
     (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
-          :else (run port handler))))
+          :else (srv/run port handler))))

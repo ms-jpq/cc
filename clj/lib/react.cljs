@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as s]
    [clojure.tools.logging :as log]
-   [lib.js :refer [js-debounce]]
+   [lib.js :as js2]
    [lib.prelude :refer [js-case update!]]))
 
 (def ^:private attr-subst {:class :class-name
@@ -67,10 +67,12 @@
                   :else (recur cs (apply conj acc c)))))]
     (map-indexed parse-impl css)))
 
-(defmulti ^:private parse-impl #(cond (nil? %2) :nil
-                                      (string? %2) :str
-                                      (int? %2) :int
-                                      (seqable? %2) :seq))
+(defmulti ^:private parse-impl
+  #(cond (nil? %2) :nil
+         (string? %2) :str
+         (int? %2) :int
+         (seqable? %2) :seq))
+
 (defmethod parse-impl :nil [_ _] nil)
 (defmethod parse-impl :str [key s] {:key key
                                     :txt s})
@@ -230,7 +232,7 @@
               (debug! "|3|")
               (assoc new :children children :el old-el)))))
 
-(def ^:private jdebounce (js-debounce 64))
+(def ^:private jdebounce (js2/debounce 64))
 
 (defn rend [root]
   {:pre [(instance? js/HTMLElement root)]}

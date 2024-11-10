@@ -1,6 +1,6 @@
 (ns lib.js)
 
-(defn js-debounce [timeout]
+(defn debounce [timeout]
   {:pre [(int? timeout)]}
   (let [atom (atom nil)
         ttl (clj->js {:timeout timeout})]

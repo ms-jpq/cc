@@ -1,10 +1,11 @@
 (ns lib.server
   (:require [clojure.data.json :as json]
+            [clojure.datafy :refer [datafy]]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
-   [java.io BufferedReader InputStreamReader]
    [java.net InetSocketAddress URLDecoder]
    [java.nio.charset StandardCharsets]
    [java.util.concurrent Executors]))
@@ -37,7 +38,7 @@
   {:pre [(instance? Headers headers)]
    :post [(map? %)]}
   (->> headers
-       (map (fn [[k v]] [(-> k .toLowerCase keyword) (into [] v)]))
+       (map (fn [[k v]] [(-> k .toLowerCase keyword) (datafy v)]))
        (into {})))
 
 (defn parse-header-params [name headers]
@@ -74,20 +75,22 @@
      :boundary boundary
      :body (-> exchange
                .getRequestBody
-               (InputStreamReader. charset)
-               (BufferedReader.))}))
+               (io/reader :encoding charset))}))
 
-(defmulti ^:private blit #(cond (nil? %2) :nil
-                                (bytes? %2) :bytes
-                                (string? %2) :str
-                                (map? %2) :map
-                                (seqable? %2) :seq))
+(defmulti ^:private blit
+  #(cond (nil? %2) :nil
+         (bytes? %2) :bytes
+         (string? %2) :str
+         (map? %2) :map
+         (seqable? %2) :seq
+         :else :data))
 
-(defmethod blit :nil [_ _])
+(defmethod blit :nil [_ _] nil)
 (defmethod blit :bytes [st b] (.write st b))
-(defmethod blit :str [st s] (->> s .getBytes (blit st)))
-(defmethod blit :map [st m] (json/write m st))
+(defmethod blit :str [st s] (.write st s))
 (defmethod blit :seq [st seq] (doseq [v seq] (blit st v)))
+(defmethod blit :map [st m] (json/write m st :escape-unicode false :escape-slash false))
+(defmethod blit :data [st d] (->> d datafy (blit st)))
 
 (defn- make-handler [process]
   {:pre [(fn? process)]}
@@ -101,13 +104,14 @@
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
           (.sendResponseHeaders exchange (int status) 0)
-          (-> exchange (.getResponseBody) (blit body)))
+          (with-open [st (-> exchange .getResponseBody io/writer)]
+            (blit st body)))
         (catch Exception e
           (log/error e)
           (doto exchange
             (.. getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
             (.sendResponseHeaders 500 0)
-            (.. getResponseBody (write (.. e getMessage getBytes)))))
+            (-> .getResponseBody (blit (datafy e)))))
         (finally
           (.close exchange))))))
 
