@@ -14,9 +14,17 @@
   {:pre [(fn? f)]}
   (assoc! m k (apply f (get m k) args)))
 
-(def ^:private re-case #"-(\w)")
+(def ^:private re-camel-case #"-(\w)")
+(def ^:private re-kebab-case #"([A-Z]|\d)")
+
 (defn js-case [kw]
   {:pre [((some-fn keyword? string?) kw)]}
   (-> kw
       name
-      (str/replace re-case (comp str/upper-case second))))
+      (str/replace re-camel-case (comp str/upper-case second))))
+
+(defn clj-case [kw]
+  {:pre [((some-fn keyword? string?) kw)]}
+  (-> kw
+      name
+      (str/replace re-kebab-case (comp (partial str "-") str/lower-case second))))
