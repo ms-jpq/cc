@@ -2,25 +2,30 @@
   (:require
    [clojure.string :as str])
   (:import
+   [java.lang System]
    [java.net URLEncoder]
    [java.nio.charset StandardCharsets]))
 
-(defn- escape [html]
-  {:pre [(string? html)]}
-  (-> html
-      (str/replace #"&" "&amp;")
-      (str/replace #"<" "&lt;")
-      (str/replace #">" "&gt;")
-      (str/replace #"\"" "&quot;")
-      (str/replace #"'" "&#39;")))
+(def ^:private html-esc
+  {\& "&amp;"
+   \< "&lt;"
+   \> "&gt;"
+   \" "&quot;"
+   \' "&#x27;"})
+
+(defn escape [s]
+  {:pre [(string? s)]}
+  (str/escape s html-esc))
 
 (defn- encode [s]
-  {:pre [((some-fn string? int?) s)]}
+  {:pre [((some-fn string? number?) s)]}
   (-> s (str) (URLEncoder/encode StandardCharsets/UTF_8)))
+
+(def ^:private line-sep (System/getProperty "line.separator"))
 
 (defn- indent [n]
   {:pre [(int? n)]}
-  (cons "\n" (repeat (* 2 n) " ")))
+  (cons line-sep (repeat (* 2 n) " ")))
 
 (defmulti ^:private walk-impl #(cond (nil? %2) :nil
                                      (string? %2) :str
@@ -56,8 +61,8 @@
 
 (defn walk [hiccup]
   {:pre [(seqable? hiccup)]}
-  (walk-impl 0 hiccup))
+  (drop 1 (walk-impl 0 hiccup)))
 
-(def hiccup [:p [:div {:class "hi"} [:span 2]] [:table]])
+(def hiccup [:p [:div {:class "hi"} [:span {:class "hi"} 2 "adsf"]] [:table]])
 
 (print (str/join "" (walk hiccup)))
