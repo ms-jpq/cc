@@ -1,5 +1,6 @@
-(ns srv.server
-  (:require [clojure.string :as str]
+(ns lib.server
+  (:require [clojure.data.json :as json]
+            [clojure.string :as str]
             [clojure.tools.logging :as log])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
@@ -76,6 +77,18 @@
                (InputStreamReader. charset)
                (BufferedReader.))}))
 
+(defmulti ^:private blit #(cond (nil? %2) :nil
+                                (bytes? %2) :bytes
+                                (string? %2) :str
+                                (map? %2) :map
+                                (seqable? %2) :seq))
+
+(defmethod blit :nil [_ _])
+(defmethod blit :bytes [st b] (.write st b))
+(defmethod blit :str [st s] (->> s .getBytes (blit st)))
+(defmethod blit :map [st m] (json/write m st))
+(defmethod blit :seq [st seq] (doseq [v seq] (blit st v)))
+
 (defn- make-handler [process]
   {:pre [(fn? process)]}
   (reify HttpHandler
@@ -84,15 +97,11 @@
       (try
         (let [request (parse-request exchange)
               rsp-headers (.getResponseHeaders exchange)
-              rsp-body (.getResponseBody exchange)
               {:keys [status headers body]
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
           (.sendResponseHeaders exchange (int status) 0)
-          (cond (nil? body) nil
-                (bytes? body) (.write rsp-body body)
-                (string? body) (->> body .getBytes (.write rsp-body))
-                :else (assert false body)))
+          (-> exchange (.getResponseBody) (blit body)))
         (catch Exception e
           (log/error e)
           (doto exchange
@@ -102,13 +111,13 @@
         (finally
           (.close exchange))))))
 
-(defn run [port process]
-  {:pre [(int? port) (fn? process)]
+(defn run [port handler]
+  {:pre [(int? port) (fn? handler)]
    :post [(instance? HttpServer %)]}
   (let [addr (InetSocketAddress. port)
         server (HttpServer/create addr 0)]
     (doto server
-      (.createContext "/" (make-handler process))
+      (.createContext "/" (make-handler handler))
       (.setExecutor (Executors/newCachedThreadPool))
       (.start))
     server))

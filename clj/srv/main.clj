@@ -1,11 +1,10 @@
 (ns srv.main
   (:require
-   [clojure.data.json :as json]
    [clojure.pprint :as pp]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
    [clojure.tools.logging :as log]
-   [srv.server :refer [run]]))
+   [lib.server :refer [run]]))
 
 (def ^:private prefix "/")
 
