@@ -1,10 +1,6 @@
 (ns lib.hiccup
   (:require
-   [clojure.string :as str])
-  (:import
-   [java.lang System]
-   [java.net URLEncoder]
-   [java.nio.charset StandardCharsets]))
+   [clojure.string :as str]))
 
 (def ^:private html-esc
   {\& "&amp;"
@@ -19,31 +15,31 @@
 
 (defn- encode [s]
   {:pre [((some-fn string? number?) s)]}
-  (-> s (str) (URLEncoder/encode StandardCharsets/UTF_8)))
-
-(def ^:private line-sep (System/getProperty "line.separator"))
+  (-> s (str)
+      #?(:clj (java.net.URLEncoder/encode java.nio.charset.StandardCharsets/UTF_8)
+         :cljs (js/encodeURIComponent))))
 
 (defn- indent [n]
   {:pre [(int? n)]}
-  (cons line-sep (repeat (* 2 n) " ")))
+  (cons "\n" (repeat (* 2 n) " ")))
 
-(defmulti ^:private walk-impl #(cond (nil? %2) :nil
-                                     (string? %2) :str
-                                     (number? %2) :num
-                                     (map? %2) :map
-                                     (seqable? %2) :seq))
+(defmulti ^:private walk #(cond (nil? %2) :nil
+                                (string? %2) :str
+                                (number? %2) :num
+                                (map? %2) :map
+                                (seqable? %2) :seq))
 
-(defmethod walk-impl :nil [_ _] nil)
-(defmethod walk-impl :str [depth s] (concat (indent depth) [(escape s)]))
-(defmethod walk-impl :num [depth n] (concat (indent depth) [(str n)]))
+(defmethod walk :nil [_ _] nil)
+(defmethod walk :str [depth s] (concat (indent depth) [(escape s)]))
+(defmethod walk :num [depth n] (concat (indent depth) [(str n)]))
 
-(defmethod walk-impl :map [_ attrs]
+(defmethod walk :map [_ attrs]
   (for [[k v] attrs] (str " " (name k) "=\"" (encode v) "\"")))
 
-(defmethod walk-impl :seq [depth [x & xs :as xss]]
+(defmethod walk :seq [depth [x & xs :as xss]]
   (flatten
    (if-not (keyword? x)
-     (for [v xss] (walk-impl (inc depth) v))
+     (for [v xss] (walk (inc depth) v))
      (let [tag (name x)
            indented (indent depth)
            closed (atom false)]
@@ -51,7 +47,7 @@
                ["<" tag]
                (for [v xs
                      :let [map (map? v)
-                           st (walk-impl (inc depth) v)]
+                           st (walk (inc depth) v)]
                      :when (not (and @closed map))]
                  (if (or @closed map)
                    st
@@ -62,10 +58,8 @@
                   (concat indented ["</" tag ">"])
                   ["/>"])))))))
 
-(defn walk [hiccup]
+(defn html [hiccup]
   {:pre [(seqable? hiccup)]}
-  (drop 1 (walk-impl 0 hiccup)))
-
-(def hiccup [:p [:div {:class "hi"} [:span {:class "hi"} 2 "adsf"]] [:table {:class "hi"}]])
-
-(print (str/join "" (walk hiccup)))
+  (cons
+   "<!doctype html>"
+   (walk 0 [:html hiccup])))
