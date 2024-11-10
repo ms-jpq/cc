@@ -3,7 +3,7 @@
    [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
-   [java.nio.file Files LinkOption Path]
+   [java.nio.file FileSystems Files LinkOption Path]
    [java.util.stream Stream]))
 
 (def ^:private path? (partial instance? Path))
@@ -67,3 +67,11 @@
         path
         stream-dir
         (.filter pred))))
+
+(defn glob [root dir pattern]
+  {:pre [(string? pattern)]}
+  (let [matcher (->> pattern (str "glob:") (.getPathMatcher (FileSystems/getDefault)))
+        match (ip/->pred (comp #(.matches matcher %) :path))]
+    (-> dir
+        (walk root)
+        (.filter match))))

@@ -4,6 +4,6 @@
    [lib.interop :as ip]
    [srv.fs :as fs]))
 
-(doseq [x (ip/st->seq (fs/walk "." "."))]
+(doseq [x (ip/st->seq (fs/glob "." "." "*"))]
   (pp/pprint (str (:path x)))
   nil)
