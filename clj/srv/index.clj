@@ -1,12 +1,9 @@
 (ns srv.index
   (:require
-   [clojure.java.io :as io]
    [clojure.pprint :as pp]
-   [clojure.walk :as walk]
    [lib.prelude :as lib])
   (:import
-   [java.nio.file Files Path Paths LinkOption SecureDirectoryStream]
-   [java.nio.file.attribute BasicFileAttributes]))
+   [java.nio.file Files Path Paths LinkOption]))
 
 (def ^:private path? (partial instance? Path))
 
@@ -22,19 +19,21 @@
     (map (fn [[k v]] [(-> k lib/clj-case keyword) v]) $)
     (into {} $)))
 
-(defn- walk [root current]
-  {:pre [(path? root) (path? current)]}
-  (let [st (Files/newDirectoryStream current)]
-    (for [row st
-          :let [{:keys [is-symbolic-link]
-                 :as attrs} (attributes row)]
+(defn- walk [root dir]
+  {:pre [(path? root) (path? dir)]}
+  (let [st (Files/newDirectoryStream dir)]
+    (for [path st
+          :when (Files/isReadable path)
+          :let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]
+                 :as attrs} (attributes path)]
           :when (not is-symbolic-link)]
-      (do
-        (clojure.pprint/pprint attrs)
-        [row]))))
+      {:path path
+       :size size
+       :m-time last-modified-time
+       :c-time creation-time})))
 
-(defn os-walk [root current]
-  {:pre [(string? root) (string? current)]}
-  (walk (path root) (path current)))
+(defn os-walk [root dir]
+  {:pre [(string? root) (string? dir)]}
+  (walk (path root) (path dir)))
 
 (clojure.pprint/pprint (os-walk "." "."))
