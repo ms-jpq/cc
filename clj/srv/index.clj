@@ -19,12 +19,12 @@
     (map (fn [[k v]] [(-> k lib/clj-case keyword) v]) $)
     (into {} $)))
 
-(defn- walk [root dir]
+(defn- os-walk [root dir]
   {:pre [(path? root) (path? dir)]}
-  (let [que (atom [])
-        st (Files/newDirectoryStream dir)]
+  (let [st (Files/list dir)
+        que (atom [])]
     (concat
-     (for [path st
+     (for [path (-> st .iterator iterator-seq)
            :when (Files/isReadable path)
            :let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (attributes path)]
            :when (or (not is-symbolic-link) 1)]
@@ -35,10 +35,11 @@
           :size size
           :m-time last-modified-time
           :c-time creation-time}))
-     (lazy-seq (mapcat (partial walk root) @que)))))
+     (lazy-seq (do (.close st) []))
+     (lazy-seq (mapcat (partial os-walk root) @que)))))
 
-(defn os-walk [root dir]
+(defn walk [root dir]
   {:pre [(string? root) (string? dir)]}
-  (filter (complement nil?) (walk (path root) (path dir))))
+  (filter (complement nil?) (os-walk (path root) (path dir))))
 
-(clojure.pprint/pprint (map (comp str :path) (os-walk "." ".")))
+(clojure.pprint/pprint (map (constantly nil) (walk "." ".")))
