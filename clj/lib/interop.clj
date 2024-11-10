@@ -5,6 +5,11 @@
      (apply [_ arg#]
        (~f arg#))))
 
+(defmacro ->supp [f]
+  `(reify java.util.function.Supplier
+     (get [_]
+       (~f))))
+
 (defmacro ->pred [f]
   `(reify java.util.function.Predicate
      (test [_ arg#]

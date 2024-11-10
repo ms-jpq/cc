@@ -4,7 +4,8 @@
    [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
-   [java.nio.file Files Path Paths LinkOption]))
+   [java.nio.file Files Path Paths LinkOption]
+   [java.util.stream Stream]))
 
 (def ^:private path? (partial instance? Path))
 
@@ -32,27 +33,34 @@
      :m-time last-modified-time
      :c-time creation-time}))
 
-(defn- os-walk [root dir]
-  {:pre [(path? root) (path? dir)]}
-  (let [st (-> dir
+(defn- os-walk [dir]
+  {:pre [(path? dir)]}
+  (let [que (atom ())
+        closed (atom false)
+        st (-> dir
                Files/list
                (.filter (ip/->pred #(Files/isReadable %)))
-               (.map (ip/->fn parse)))
-        que (atom [])]
-    (concat
-     (filter
-      (complement nil?)
-      (for [{:keys [path link dir?]
-             :as row} (-> st .iterator iterator-seq)]
-        (if dir?
-          (do (swap! que conj path)
-              nil)
-          row)))
-     (lazy-seq (do (.close st) []))
-     (lazy-seq (mapcat (partial os-walk root) @que)))))
+               (.map (ip/->fn #(let [parsed (parse %)]
+                                 (swap! que cons %)
+                                 parsed))))
+        st2 (Stream/generate
+             (ip/->supp #(let [{:keys [path]} (peek @que)]
+                           (when-not @closed
+                             (reset! closed true)
+                             (.close st))
+                           (swap! que pop)
+                           path)))]
+    (-> st
+        (Stream/concat st2)
+        (.takeWhile (ip/->pred (complement nil?)))
+        (.flatMap (ip/->fn os-walk)))))
 
 (defn walk [root dir]
   {:pre [(string? root) (string? dir)]}
-  (os-walk (path root) (path dir)))
+  (-> dir
+      path
+      os-walk
+      .iterator
+      iterator-seq))
 
-(clojure.pprint/pprint (map identity (walk "." ".")))
+(clojure.pprint/pprint (walk "." "."))
