@@ -43,17 +43,19 @@
                (.map (ip/->fn #(let [parsed (parse %)]
                                  (swap! que cons %)
                                  parsed))))
-        st2 (Stream/generate
-             (ip/->supp #(let [{:keys [path]} (peek @que)]
+        gen (Stream/generate
+             (ip/->supp #(let [{:keys [path]
+                                :as p} (peek @que)]
                            (when-not @closed
                              (reset! closed true)
                              (.close st))
                            (swap! que pop)
-                           path)))]
-    (-> st
-        (Stream/concat st2)
-        (.takeWhile (ip/->pred (complement nil?)))
-        (.flatMap (ip/->fn os-walk)))))
+                           (clojure.pprint/pprint p)
+                           path)))
+        st2 (.. gen
+                (takeWhile (ip/->pred (complement nil?)))
+                (flatMap (ip/->fn os-walk)))]
+    (Stream/concat st st2)))
 
 (defn walk [root dir]
   {:pre [(string? root) (string? dir)]}
