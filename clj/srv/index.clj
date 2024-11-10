@@ -1,6 +1,7 @@
 (ns srv.index
   (:require
    [clojure.pprint :as pp]
+   [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
    [java.nio.file Files Path Paths LinkOption]))
@@ -19,24 +20,34 @@
     (map (fn [[k v]] [(-> k lib/clj-case keyword) v]) $)
     (into {} $)))
 
+(defn- parse [path]
+  {:pre [(path? path)]
+   :post [(map? %)]}
+  (let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (attributes path)]
+    {:path path
+     :link (when is-symbolic-link
+             (.toRealPath path (into-array LinkOption [])))
+     :dir? is-directory
+     :size size
+     :m-time last-modified-time
+     :c-time creation-time}))
+
 (defn- os-walk [root dir]
   {:pre [(path? root) (path? dir)]}
-  (let [st (Files/list dir)
+  (let [st (-> dir
+               Files/list
+               (.filter (ip/->pred #(Files/isReadable %)))
+               (.map (ip/->fn parse)))
         que (atom [])]
     (concat
      (filter
       (complement nil?)
-      (for [path (-> st .iterator iterator-seq)
-            :when (Files/isReadable path)
-            :let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (attributes path)]
-            :when (or (not is-symbolic-link) 1)]
-        (if is-directory
+      (for [{:keys [path link dir?]
+             :as row} (-> st .iterator iterator-seq)]
+        (if dir?
           (do (swap! que conj path)
               nil)
-          {:path path
-           :size size
-           :m-time last-modified-time
-           :c-time creation-time})))
+          row)))
      (lazy-seq (do (.close st) []))
      (lazy-seq (mapcat (partial os-walk root) @que)))))
 

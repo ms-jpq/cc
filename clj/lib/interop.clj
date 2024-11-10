@@ -1,10 +1,11 @@
-(ns lib.interop
-  (:import
-   [java.util.function Predicate]))
+(ns lib.interop)
 
-(defn ->predicate [f]
-  {:pre [(fn? f)]}
-  (reify Predicate
-    (test [_ t]
-      (boolean (f t)))))
+(defmacro ->fn [f]
+  `(reify java.util.function.Function
+     (apply [_ arg#]
+       (~f arg#))))
 
+(defmacro ->pred [f]
+  `(reify java.util.function.Predicate
+     (test [_ arg#]
+       (~f arg#))))
