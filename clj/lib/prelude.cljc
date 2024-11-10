@@ -10,9 +10,11 @@
          (apply map vector)
          (take-while not-eof?))))
 
-(defn update! [m k f & args]
-  {:pre [(fn? f)]}
-  (assoc! m k (apply f (get m k) args)))
+(defn remove-prefix [s p]
+  {:pre [(string? s) (string? p)]}
+  (if (str/starts-with? s p)
+    (subs s (count p))
+    s))
 
 (def ^:private re-camel-case #"-(\w)")
 (def ^:private re-kebab-case #"([A-Z]|\d)")

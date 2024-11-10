@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [clojure.tools.logging :as log]
+   [lib.prelude :as lib]
    [lib.server :as srv]
    [srv.index :as idx]))
 
@@ -15,7 +16,7 @@
     (if-not (str/starts-with? path prefix)
       {:status 404
        :body "Prefix Mismatch"}
-      (let [path (subs path (count prefix))
+      (let [path (lib/remove-prefix path prefix)
             request (assoc request :path path)]
         (cond
           (= path idx/path-glob) (idx/handler-glob request)
