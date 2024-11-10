@@ -61,17 +61,16 @@
 
 (defn walk [root dir]
   {:pre [(string? root) (string? dir)]}
-  (let [real-root (-> root path canonicalize)
-        pred (ip/->pred (comp (some-fn nil? #(.startsWith % real-root)) :link))]
+  (let [real-root (-> root path canonicalize)]
     (-> dir
         path
         stream-dir
-        (.filter pred))))
+        (.filter (ip/->pred (comp (some-fn nil? #(.startsWith % real-root)) :link))))))
 
 (defn glob [root dir pattern]
   {:pre [(string? pattern)]}
-  (let [matcher (->> pattern (str "glob:") (.getPathMatcher (FileSystems/getDefault)))
-        match (ip/->pred (comp #(.matches matcher %) :path))]
+  (let [fs (FileSystems/getDefault)
+        matcher (->> pattern (str "glob:" dir (.getSeparator fs)) (.getPathMatcher fs))]
     (-> dir
         (walk root)
-        (.filter match))))
+        (.filter (ip/->pred (comp #(.matches matcher %) :path))))))
