@@ -6,16 +6,17 @@
    [clojure.tools.logging :as log]
    [lib.server :as srv]))
 
-(def ^:private prefix "/")
+(def ^:private path-sep "/")
 
 (defn- make-handler [prefix root data]
-  {:pre [(string? prefix) (string? root) (string? data)
-         (and (.startsWith prefix "/") (.endsWith prefix "/"))]}
+  {:pre [(string? prefix) (string? root) (string? data)]}
   (fn [{:keys [path]
         :as request}]
-    (let [sections (str/split path #"/+")]
-      (pp/pprint request)
-      {:body "hi"})))
+    (if-not (str/starts-with? path prefix)
+      {:status 404
+       :body "Prefix Mismatch"}
+      (let [path (subs path (count prefix))]
+        {:body "hi"}))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
@@ -29,8 +30,8 @@
                :parse-fn #(Integer/parseInt %)
                :validate [#(< 0 % 0x10000)]]
               [nil "--prefix PREFIX"
-               :default prefix
-               :validate [#(str/starts-with? % prefix)]]]
+               :default path-sep
+               :validate [#((every-pred str/starts-with? str/ends-with?) % path-sep)]]]
 
         {{:keys [help port prefix root data]} :options
          summary :summary
