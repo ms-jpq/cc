@@ -1,6 +1,6 @@
 (ns site.index
   (:require
-   [lib.react :as react]))
+   ))
 
 (enable-console-print!)
 (.clear js/console)

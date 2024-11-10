@@ -1,6 +1,6 @@
 (ns lib.prelude
   (:require
-   [clojure.string :as s]))
+   [clojure.string :as str]))
 
 (defn long-zip [sentenial & seqs]
   (let [rep (repeat sentenial)
@@ -19,4 +19,4 @@
   {:pre [((some-fn keyword? string?) kw)]}
   (-> kw
       name
-      (s/replace re-case (comp s/upper-case second))))
+      (str/replace re-case (comp str/upper-case second))))
