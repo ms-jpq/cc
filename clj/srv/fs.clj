@@ -8,7 +8,7 @@
 
 (def ^:private path? (partial instance? Path))
 
-(defn- path [path & paths]
+(defn path [path & paths]
   {:pre [(string? path)]}
   (Path/of path (into-array String paths)))
 

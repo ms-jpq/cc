@@ -9,7 +9,8 @@
 (def ^:private prefix "/")
 
 (defn- make-handler [prefix root data]
-  {:pre [(string? prefix) (string? root) (string? data)]}
+  {:pre [(string? prefix) (string? root) (string? data)
+         (and (.startsWith prefix "/") (.endsWith prefix "/"))]}
   (fn [{:keys [path]
         :as request}]
     (let [sections (str/split path #"/+")]
