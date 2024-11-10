@@ -5,14 +5,18 @@
    [clojure.set :as set]
    [clojure.string :as s]
    [clojure.tools.logging :as log]
-   [lib.hiccup :refer [attr-subst data-prefix]]
    [lib.js :refer [js-debounce]]
    [lib.prelude :refer [js-case update!]]))
+
+(def ^:private attr-subst {:class :class-name
+                           :for :html-for})
+
+(def ^:private data-prefix "data-")
 
 (def ^:private data-prefix-len (count data-prefix))
 
 (defn- parse-attrs [attrs props]
-  {:pre [(map? props)]}
+  {:pre [(map? attrs) (map? props)]}
   (loop [stream props
          acc attrs]
     (let [[[key val] & ps] stream]
