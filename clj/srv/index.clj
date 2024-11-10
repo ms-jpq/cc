@@ -1,9 +1,8 @@
 (ns srv.index
   (:require
-   [clojure.pprint :as pp]
-   [clojure.string :as str]
+   [lib.hiccup :as h]
    [lib.interop :as ip]
-   [lib.lib :as lib]
+   [lib.prelude :as lib]
    [srv.fs :as fs])
   (:import [java.util UUID]))
 
@@ -15,4 +14,13 @@
 
 (defn handler-static [root data {:keys [path]
                                  :as request}]
-  {:body ""})
+  (let [dir (str root lib/path-sep path)]
+    (println dir)
+    (with-open [st (fs/walk root dir)]
+      {:body (h/html
+              [:div
+               (for [row (ip/st->seq st)]
+                 [:div
+                  [:span (str (:path row))]
+                  [:span (str (:size row))]
+                  [:span (str (:m-time row))]])])})))

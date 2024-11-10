@@ -7,8 +7,6 @@
    [lib.server :as srv]
    [srv.index :as idx]))
 
-(def ^:private path-sep "/")
-
 (defn- make-handler [prefix root data]
   {:pre [(string? prefix) (string? root) (string? data)]}
   (fn [{:keys [path]
@@ -34,8 +32,9 @@
                :parse-fn #(Integer/parseInt %)
                :validate [#(< 0 % 0x10000)]]
               [nil "--prefix PREFIX"
-               :default path-sep
-               :validate [#(str/starts-with? % path-sep) #(str/ends-with? % path-sep)]]]
+               :default lib/path-sep
+               :validate [#(str/starts-with? % lib/path-sep)
+                          #(str/ends-with? % lib/path-sep)]]]
 
         {{:keys [help port prefix root data]} :options
          summary :summary

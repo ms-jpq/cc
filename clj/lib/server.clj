@@ -3,7 +3,9 @@
             [clojure.datafy :refer [datafy]]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [lib.macros :as m]
+            [clojure.pprint :as pprint])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
    [java.net InetSocketAddress URLDecoder]
@@ -106,15 +108,15 @@
               {:keys [status headers body]
                :or {status 200}} (process request)]
           (doseq [[k v] headers] (.add rsp-headers k v))
-          (doto exchange
-            (.sendResponseHeaders (int status) 0)
-            (blit-stream body)))
+          (.sendResponseHeaders exchange (int status) 0)
+          (m/suppress [java.io.IOException] (blit-stream exchange body)))
         (catch Exception e
           (log/error e)
-          (doto exchange
-            (.. getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
-            (.sendResponseHeaders 500 0)
-            (blit-stream (datafy e))))
+          (.. exchange getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))
+          (m/suppress
+           [java.io.IOException]
+           (.sendResponseHeaders exchange 500 0)
+           (blit-stream exchange (datafy e))))
         (finally
           (.close exchange))))))
 
