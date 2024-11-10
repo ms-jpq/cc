@@ -1,6 +1,5 @@
 (ns srv.fs
   (:require
-   [clojure.pprint :as pp]
    [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
@@ -67,9 +66,4 @@
     (-> dir
         path
         stream-dir
-        (.filter pred)
-        ip/st->seq)))
-
-(doseq [x (walk "." ".")]
-  (clojure.pprint/pprint (str (:path x)))
-  nil)
+        (.filter pred))))
