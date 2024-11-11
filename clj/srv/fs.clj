@@ -35,8 +35,8 @@
              (canonicalize path))
      :dir? is-directory
      :size size
-     :m-time last-modified-time
-     :c-time creation-time}))
+     :m-time (.toInstant last-modified-time)
+     :c-time (.toInstant creation-time)}))
 
 (defn- stream-dir [max-depth depth dir]
   {:pre [(int? max-depth) (int? depth) (path? dir)]}
