@@ -7,6 +7,7 @@
    [lib.prelude :as lib]
    [lib.server :as srv]
    [srv.fs :as fs]
+   [srv.glob :as glob]
    [srv.index :as idx]))
 
 (def ^:private path-sep "/")
@@ -21,8 +22,8 @@
       (let [path (lib/remove-prefix path prefix)
             request (assoc request :path path)]
         (cond
-          (= path idx/path-glob) (idx/handler-glob root data-dir request)
-          :else (idx/handler-static root data-dir request))))))
+          (= path glob/path) (glob/handler root data-dir request)
+          :else (idx/handler root data-dir request))))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
