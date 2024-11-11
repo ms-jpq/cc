@@ -11,14 +11,6 @@
 
 (def ^:private html-headers {"content-type" "text/html; charset=utf-8"})
 
-(defn- mime-type [path]
-  (let [mime (-> path
-                 .toFile
-                 .getName
-                 URLConnection/guessContentTypeFromName
-                 (or "application/octet-stream"))]
-    {"content-type" mime}))
-
 (defn- rel-path [root {:keys [dir? path]}]
   {:pre [(fs/path? root) (boolean? dir?) (fs/path? path)]}
   (let [rel (-> root (.relativize path) str)]
@@ -41,6 +33,16 @@
                        [:span (str c-time)]
                        [:span (str m-time)]])]])}))
 
+(defn- single-file-headers [{:keys [path]}]
+  {:pre [(fs/path? path)]}
+  (let [mime (-> path
+                 .toFile
+                 .getName
+                 URLConnection/guessContentTypeFromName
+                 (or "application/octet-stream"))]
+    {"content-type" mime
+     "etag" ""}))
+
 (defn handler-static [root data-dir {:keys [path query]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
   (let [current (.resolve root path)
@@ -51,10 +53,10 @@
       {:status 404
        :body "404"}
       file?
-      (let [mime (mime-type current)]
+      (let [_ nil]
         {:status 200
-         :headers mime
-         :body mime})
+         :headers (single-file-headers current)
+         :body "hi"})
       dir?
       (let [st (fs/walk 1 root current)]
         {:close st
