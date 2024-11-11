@@ -5,10 +5,13 @@
    [clojure.tools.logging :as log]
    [lib.prelude :as lib]
    [lib.server :as srv]
+   [srv.fs :as fs]
    [srv.index :as idx]))
 
-(defn- make-handler [prefix root data]
-  {:pre [(string? prefix) (string? root) (string? data)]}
+(def ^:private path-sep "/")
+
+(defn- make-handler [prefix root data-dir]
+  {:pre [(string? prefix) (fs/path? root) (fs/path? data-dir)]}
   (fn [{:keys [path]
         :as request}]
     (if-not (str/starts-with? path prefix)
@@ -17,8 +20,8 @@
       (let [path (lib/remove-prefix path prefix)
             request (assoc request :path path)]
         (cond
-          (= path idx/path-glob) (idx/handler-glob root data request)
-          :else (idx/handler-static root data request))))))
+          (= path idx/path-glob) (idx/handler-glob root data-dir request)
+          :else (idx/handler-static root data-dir request))))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
@@ -32,14 +35,14 @@
                :parse-fn #(Integer/parseInt %)
                :validate [#(< 0 % 0x10000)]]
               [nil "--prefix PREFIX"
-               :default lib/path-sep
-               :validate [#(str/starts-with? % lib/path-sep)
-                          #(str/ends-with? % lib/path-sep)]]]
+               :default path-sep
+               :validate [#(str/starts-with? % path-sep)
+                          #(str/ends-with? % path-sep)]]]
 
         {{:keys [help port prefix root data]} :options
          summary :summary
          errors :errors} (cli/parse-opts args argp)
-        handler (make-handler prefix root data)]
+        handler (make-handler prefix (fs/path root) (fs/path data))]
     (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))

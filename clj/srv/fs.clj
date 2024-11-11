@@ -6,7 +6,7 @@
    [java.nio.file FileSystems Files LinkOption Path]
    [java.util.stream Stream]))
 
-(def ^:private path? (partial instance? Path))
+(def path? (partial instance? Path))
 
 (defn path [path & paths]
   {:pre [(string? path)]}
@@ -60,10 +60,10 @@
     (Stream/concat st st2)))
 
 (defn walk [root dir]
-  {:pre [(string? root) (string? dir)]}
-  (let [real-root (-> root path canonicalize)]
+  {:pre [(path? root) (path? dir)]}
+  (let [real-root (canonicalize root)]
     (-> dir
-        path
+        canonicalize
         stream-dir
         (.filter (ip/->pred (comp (some-fn nil? #(.startsWith % real-root)) :link))))))
 

@@ -8,13 +8,13 @@
 
 (def path-glob (str (UUID/randomUUID)))
 
-(defn handler-glob [root data {:keys [path]
-                               :as request}]
+(defn handler-glob [root data-dir {:keys [path query]}]
+  {:pre [(fs/path? root) (fs/path? data-dir)]}
   {:body ""})
 
-(defn handler-static [root data {:keys [path]
-                                 :as request}]
-  (let [dir (str root lib/path-sep path)]
+(defn handler-static [root data-dir {:keys [path]}]
+  {:pre [(fs/path? root) (fs/path? data-dir)]}
+  (let [dir (str root path-sep path)]
     (println dir)
     (with-open [st (fs/walk root dir)]
       {:body (h/html
