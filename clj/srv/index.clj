@@ -17,12 +17,12 @@
 (def ^:private html-headers {:content-type "text/html; charset=utf-8"})
 
 (defn- rel-path [root {:keys [dir? path]}]
-  {:pre [(fs/path? root) (boolean? dir?) (fs/path? path)]}
+  {:pre [(ip/path? root) (boolean? dir?) (ip/path? path)]}
   (let [rel (-> root (.relativize path) str)]
     (if dir? (str rel "/") rel)))
 
 (defn handler-glob [root data-dir {:keys [path query]}]
-  {:pre [(fs/path? root) (fs/path? data-dir)]}
+  {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [pattern (-> query :q first)
         dir (.resolve root path)
         st (fs/glob root dir pattern)]
@@ -43,7 +43,7 @@
   (-> (ByteBuffer/allocate 8) (.putLong long) .array))
 
 (defn- single-file-headers [{:keys [path size m-time]}]
-  {:pre [(fs/path? path) (int? size) (instance? Instant m-time)]}
+  {:pre [(ip/path? path) (int? size) (instance? Instant m-time)]}
   (let [md (MessageDigest/getInstance "MD5")]
     (doto md
       (.update (-> path str .getBytes))
@@ -57,14 +57,41 @@
      :etag (->> md
                 .digest
                 (map (partial format "%02x"))
-                (str/join ""))}))
+                (str/join ""))
+     :accept-ranges "bytes"}))
 
-(defn- stream-file [path]
-  {:pre [(fs/path? path)]}
+(defn- stream-file [path pos]
+  {:pre [(ip/path? path)]}
   (-> path .toFile FileInputStream.))
 
-(defn handler-static [root data-dir {:keys [path headers]}]
-  {:pre [(fs/path? root) (fs/path? data-dir)]}
+(defn- index [root current st]
+  {:pre [(ip/path? root) (ip/path? current) (ip/stream? st)]}
+  (h/html
+   [[:head
+     [:meta {:name "viewport"
+             :content "width=device-width, initial-scale=1.0"}]]
+    [:body
+     [:nav
+      [:ol
+       (for [parent (fs/p-parents current)
+             :while (and (.startsWith parent root) (not= current root))
+             :let [rel (rel-path root {:dir? true
+                                       :path parent})]]
+         [:li
+          [:a {:href rel} rel]])]]
+     [:main
+      [:ul
+       (for [{:keys [size m-time c-time]
+              :as row} (ip/st->seq st)
+             :let [rel (rel-path root row)]]
+         [:li
+          [:a {:href rel} rel]
+          [:span size]
+          [:time {:datetime (str c-time)} (str c-time)]
+          [:time {:datetime (str m-time)} (str m-time)]])]]]]))
+
+(defn handler-static [root data-dir {:keys [method path headers]}]
+  {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [current (.resolve root path)
         {:keys [link file? dir?]
          :as attrs} (fs/stat current)]
@@ -73,10 +100,12 @@
       {:status 404
        :body "404"}
       file?
-      (let [{:keys [etag]
+      (let [{:keys [if-none-match range]} headers
+            {:keys [etag]
              :as hdrs} (single-file-headers attrs)
-            st (stream-file current)]
-        (if (= (-> headers :if-none-match first) etag)
+            st (when (= method :get)
+                 (stream-file current range))]
+        (if (= (last if-none-match) etag)
           {:status 304}
           {:status 200
            :headers hdrs
@@ -85,26 +114,4 @@
       (let [st (fs/walk 1 root current)]
         {:close st
          :headers html-headers
-         :body (h/html
-                [[:head
-                  [:meta {:name "viewport"
-                          :content "width=device-width, initial-scale=1.0"}]]
-                 [:body
-                  [:nav
-                   [:ol
-                    (for [parent (fs/parents current)
-                          :while (and (.startsWith parent root) (not= current root))
-                          :let [rel (rel-path root {:dir? true
-                                                    :path parent})]]
-                      [:li
-                       [:a {:href rel} rel]])]]
-                  [:main
-                   [:ul
-                    (for [{:keys [size m-time c-time]
-                           :as row} (ip/st->seq st)
-                          :let [rel (rel-path root row)]]
-                      [:li
-                       [:a {:href rel} rel]
-                       [:span size]
-                       [:time {:datetime (str c-time)} (str c-time)]
-                       [:time {:datetime (str m-time)} (str m-time)]])]]]])}))))
+         :body (index root current st)}))))

@@ -1,5 +1,6 @@
 (ns lib.interop
   (:import
+   [java.nio.file Path]
    [java.util.stream Stream]))
 
 (defmacro ->fn [f]
@@ -25,3 +26,11 @@
 (defn st->seq [st]
   {:pre [(instance? Stream st)]}
   (-> st .iterator iterator-seq))
+
+(def stream? (partial instance? Stream))
+
+(def path? (partial instance? Path))
+
+(defn path [path & paths]
+  {:pre [(string? path)]}
+  (Path/of path (into-array String paths)))

@@ -69,7 +69,7 @@
     {:local-addr (-> exchange .getLocalAddress parse-addr)
      :remote-addr (-> exchange .getRemoteAddress parse-addr)
      :http-version (.getProtocol exchange)
-     :method (.. exchange getRequestMethod toUpperCase)
+     :method (.. exchange getRequestMethod toLowerCase)
      :path (.getPath uri)
      :query (-> uri .getQuery parse-query)
      :headers headers

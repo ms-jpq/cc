@@ -3,28 +3,22 @@
    [lib.interop :as ip]
    [lib.prelude :as lib])
   (:import
-   [java.nio.file Files LinkOption Path NoSuchFileException]
+   [java.nio.file Files LinkOption NoSuchFileException]
    [java.util.stream Stream]))
 
-(def path? (partial instance? Path))
-
-(defn path [path & paths]
-  {:pre [(string? path)]}
-  (Path/of path (into-array String paths)))
-
 (defn canonicalize [path]
-  {:pre [(path? path)]}
+  {:pre [(ip/path? path)]}
   (.toRealPath path (into-array LinkOption [])))
 
-(defn parents [path]
-  {:pre [(path? path)]}
+(defn p-parents [path]
+  {:pre [(ip/path? path)]}
   (let [parent (.getParent path)]
     (if parent
-      (cons parent (parents parent))
+      (cons parent (p-parents parent))
       ())))
 
 (defn- os-stat [path]
-  {:pre [(path? path)]
+  {:pre [(ip/path? path)]
    :post [((some-fn map? nil?) %)]}
   (try
     (as-> path $
@@ -34,7 +28,7 @@
     (catch NoSuchFileException _ nil)))
 
 (defn stat [path]
-  {:pre [(path? path)]
+  {:pre [(ip/path? path)]
    :post [(map? %)]}
   (let [{:keys [is-symbolic-link is-directory is-regular-file size last-modified-time creation-time]} (os-stat path)]
     {:path path
@@ -47,7 +41,7 @@
      :c-time (.toInstant creation-time)}))
 
 (defn- stream-dir [max-depth depth dir]
-  {:pre [(int? max-depth) (int? depth) (path? dir)]}
+  {:pre [(int? max-depth) (int? depth) (ip/path? dir)]}
   (if (>= depth max-depth)
     (Stream/empty)
     (let [que (atom [])
@@ -72,7 +66,7 @@
       (Stream/concat st st2))))
 
 (defn walk [max-depth root dir]
-  {:pre [(int? max-depth) (path? root) (path? dir)]}
+  {:pre [(int? max-depth) (ip/path? root) (ip/path? dir)]}
   (let [pred (ip/->pred (comp (some-fn nil? #(.startsWith % root)) :link))]
     (.filter (stream-dir max-depth 0 (canonicalize dir)) pred)))
 

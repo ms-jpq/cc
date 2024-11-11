@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [clojure.tools.logging :as log]
+   [lib.interop :as ip]
    [lib.prelude :as lib]
    [lib.server :as srv]
    [srv.fs :as fs]
@@ -11,7 +12,7 @@
 (def ^:private path-sep "/")
 
 (defn- make-handler [prefix root data-dir]
-  {:pre [(string? prefix) (fs/path? root) (fs/path? data-dir)]}
+  {:pre [(string? prefix) (ip/path? root) (ip/path? data-dir)]}
   (fn [{:keys [path]
         :as request}]
     (if-not (str/starts-with? path prefix)
@@ -42,7 +43,7 @@
         {{:keys [help port prefix root data]} :options
          summary :summary
          errors :errors} (cli/parse-opts args argp)
-        handler (make-handler prefix (-> root fs/path fs/canonicalize) (fs/path data))]
+        handler (make-handler prefix (-> root ip/path fs/canonicalize) (ip/path data))]
     (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
