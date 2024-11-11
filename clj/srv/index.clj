@@ -48,5 +48,5 @@
                           [:li
                            [:a {:href rel} rel]
                            [:span size]
-                           [:span (str c-time)]
-                           [:span (str m-time)]])]])}))))
+                           [:time {:datetime (str c-time)} (str c-time)]
+                           [:time {:datetime (str m-time)} (str m-time)]])]])}))))
