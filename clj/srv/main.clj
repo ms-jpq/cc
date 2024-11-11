@@ -42,7 +42,7 @@
         {{:keys [help port prefix root data]} :options
          summary :summary
          errors :errors} (cli/parse-opts args argp)
-        handler (make-handler prefix (fs/path root) (fs/path data))]
+        handler (make-handler prefix (-> root fs/path fs/canonicalize) (fs/path data))]
     (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))

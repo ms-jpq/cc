@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]))
 
+(def not-nil? (complement nil?))
+
 (defn long-zip [sentenial & seqs]
   (let [rep (repeat sentenial)
         not-eof? (->> sentenial (partial identical?) (partial not-every?))]

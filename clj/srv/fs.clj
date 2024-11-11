@@ -12,7 +12,7 @@
   {:pre [(string? path)]}
   (Path/of path (into-array String paths)))
 
-(defn- canonicalize [path]
+(defn canonicalize [path]
   {:pre [(path? path)]}
   (.toRealPath path (into-array LinkOption [])))
 
@@ -59,14 +59,13 @@
                                (swap! que pop))
                              path)))
           st2 (.. gen
-                  (takeWhile (ip/->pred (complement nil?)))
+                  (takeWhile (ip/->pred lib/not-nil?))
                   (flatMap (ip/->fn (partial stream-dir max-depth (inc depth)))))]
       (Stream/concat st st2))))
 
 (defn walk [max-depth root dir]
   {:pre [(int? max-depth) (path? root) (path? dir)]}
-  (let [real-root (canonicalize root)
-        pred (ip/->pred (comp (some-fn nil? #(.startsWith % real-root)) :link))]
+  (let [pred (ip/->pred (comp (some-fn nil? #(.startsWith % root)) :link))]
     (.filter (stream-dir max-depth 0 (canonicalize dir)) pred)))
 
 (defn glob [root dir pattern]

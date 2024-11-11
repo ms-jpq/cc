@@ -33,8 +33,9 @@
 (defn handler-static [root data-dir {:keys [path query]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
   (let [current (.resolve root path)
-        {:as attrs} (fs/stat current)]
-    (if (nil? attrs)
+        {:keys [link]
+         :as attrs} (fs/stat current)]
+    (if (or (nil? attrs) (and (lib/not-nil? link) (not (.startsWith link root))))
       {:status 404
        :body "404"}
       (let [st (fs/walk 1 root current)]
