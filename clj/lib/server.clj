@@ -7,6 +7,7 @@
    [lib.macros :as m])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
+   [java.io InputStream]
    [java.net InetSocketAddress URLDecoder]
    [java.nio.charset StandardCharsets]
    [java.util.concurrent Executors]))
@@ -82,12 +83,14 @@
   #(cond (nil? %2) :nil
          (bytes? %2) :bytes
          (string? %2) :str
-         (seqable? %2) :seq))
+         (seqable? %2) :seq
+         (instance? InputStream %2) :st))
 
 (defmethod blit :nil [_ _] nil)
 (defmethod blit :bytes [st b] (.write st b))
 (defmethod blit :str [st s] (.write st (.getBytes s utf-8)))
 (defmethod blit :seq [st seq] (doseq [v seq] (blit st v)))
+(defmethod blit :st [st in] (with-open [fd in] (.transferTo fd st)))
 
 (defn- blit-stream [exchange body]
   {:pre [(instance? HttpExchange exchange)]}

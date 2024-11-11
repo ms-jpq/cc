@@ -5,7 +5,8 @@
    [lib.interop :as ip]
    [lib.prelude :as lib]
    [srv.fs :as fs])
-  (:import [java.net URLConnection]
+  (:import [java.io FileInputStream]
+           [java.net URLConnection]
            [java.nio ByteBuffer]
            [java.security MessageDigest]
            [java.time Instant]
@@ -59,7 +60,8 @@
                 (str/join ""))}))
 
 (defn- stream-file [path]
-  {:pre [(fs/path? path)]})
+  {:pre [(fs/path? path)]}
+  (-> path .toFile FileInputStream.))
 
 (defn handler-static [root data-dir {:keys [path headers]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
@@ -76,8 +78,7 @@
             st (stream-file current)]
         (if (= (-> headers :if-none-match first) etag)
           {:status 304}
-          {:close st
-           :status 200
+          {:status 200
            :headers hdrs
            :body st}))
       dir?
