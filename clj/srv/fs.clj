@@ -16,7 +16,7 @@
   {:pre [(path? path)]}
   (.toRealPath path (into-array LinkOption [])))
 
-(defn stat [path]
+(defn- os-stat [path]
   {:pre [(path? path)]
    :post [((some-fn map? nil?) %)]}
   (try
@@ -26,13 +26,14 @@
       (into {} $))
     (catch NoSuchFileException _ nil)))
 
-(defn- parse [path]
+(defn stat [path]
   {:pre [(path? path)]
    :post [(map? %)]}
-  (let [{:keys [is-symbolic-link is-directory size last-modified-time creation-time]} (stat path)]
+  (let [{:keys [is-symbolic-link is-directory is-regular-file size last-modified-time creation-time]} (os-stat path)]
     {:path path
      :link (when is-symbolic-link
              (canonicalize path))
+     :file? is-regular-file
      :dir? is-directory
      :size size
      :m-time (.toInstant last-modified-time)
@@ -47,7 +48,7 @@
                  Files/list
                  (.filter (ip/->pred #(Files/isReadable %)))
                  (.map (ip/->fn #(let [{:keys [dir?]
-                                        :as parsed} (parse %)]
+                                        :as parsed} (stat %)]
                                    (when dir?
                                      (swap! que conj %))
                                    parsed)))

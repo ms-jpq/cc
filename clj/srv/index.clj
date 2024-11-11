@@ -4,11 +4,20 @@
    [lib.interop :as ip]
    [lib.prelude :as lib]
    [srv.fs :as fs])
-  (:import [java.util UUID]))
+  (:import [java.net URLConnection]
+           [java.util UUID]))
 
 (def path-glob (str (UUID/randomUUID)))
 
-(def ^:private content-headers {"content-type" "text/html; charset=utf-8"})
+(def ^:private html-headers {"content-type" "text/html; charset=utf-8"})
+
+(defn- mime-type [path]
+  (let [mime (-> path
+                 .toFile
+                 .getName
+                 URLConnection/guessContentTypeFromName
+                 (or "application/octet-stream"))]
+    {"content-type" mime}))
 
 (defn- rel-path [root {:keys [dir? path]}]
   {:pre [(fs/path? root) (boolean? dir?) (fs/path? path)]}
@@ -35,16 +44,21 @@
 (defn handler-static [root data-dir {:keys [path query]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
   (let [current (.resolve root path)
-        {:keys [link]
+        {:keys [link file? dir?]
          :as attrs} (fs/stat current)]
     (cond
       (or (nil? attrs) (and (lib/not-nil? link) (not (.startsWith link root))))
       {:status 404
        :body "404"}
-      :else
+      file?
+      (let [mime (mime-type current)]
+        {:status 200
+         :headers mime
+         :body mime})
+      dir?
       (let [st (fs/walk 1 root current)]
         {:close st
-         :headers content-headers
+         :headers html-headers
          :body (h/html
                 [[:head
                   [:meta {:name "viewport"
