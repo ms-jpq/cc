@@ -61,7 +61,7 @@
      :accept-ranges "bytes"}))
 
 (defn- stream-file [path pos]
-  {:pre [(ip/path? path)]}
+  {:pre [(ip/path? path) (string? pos)]}
   (-> path .toFile FileInputStream.))
 
 (defn- index [root current st]
