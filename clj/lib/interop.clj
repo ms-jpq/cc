@@ -23,11 +23,11 @@
      (test [_ arg#]
        (~f arg#))))
 
-(defn st->seq [st]
-  {:pre [(instance? Stream st)]}
-  (-> st .iterator iterator-seq))
-
 (def stream? (partial instance? Stream))
+
+(defn st->seq [st]
+  {:pre [(stream? st)]}
+  (-> st .iterator iterator-seq))
 
 (def path? (partial instance? Path))
 
