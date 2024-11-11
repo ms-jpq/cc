@@ -58,6 +58,9 @@
                 (map (partial format "%02x"))
                 (str/join ""))}))
 
+(defn- stream-file [path]
+  {:pre [(fs/path? path)]})
+
 (defn handler-static [root data-dir {:keys [path headers]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
   (let [current (.resolve root path)
@@ -69,12 +72,14 @@
        :body "404"}
       file?
       (let [{:keys [etag]
-             :as hdrs} (single-file-headers attrs)]
+             :as hdrs} (single-file-headers attrs)
+            st (stream-file current)]
         (if (= (-> headers :if-none-match first) etag)
           {:status 304}
-          {:status 200
+          {:close st
+           :status 200
            :headers hdrs
-           :body "hi"}))
+           :body st}))
       dir?
       (let [st (fs/walk 1 root current)]
         {:close st
