@@ -14,13 +14,13 @@
 
 (defn handler-static [root data-dir {:keys [path]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
-  (let [dir (str root path-sep path)]
-    (println dir)
-    (with-open [st (fs/walk root dir)]
-      {:body (h/html
-              [:div
-               (for [row (ip/st->seq st)]
-                 [:div
-                  [:span (str (:path row))]
-                  [:span (str (:size row))]
-                  [:span (str (:m-time row))]])])})))
+  (let [dir (.resolve root path)
+        st (fs/walk root dir)]
+    {:close st
+     :body (h/html
+            [:div
+             (for [row (ip/st->seq st)]
+               [:div
+                [:span (str (:path row))]
+                [:span (str (:size row))]
+                [:span (str (:m-time row))]])])}))

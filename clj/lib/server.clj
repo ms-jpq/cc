@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [lib.macros :as m]
-            [clojure.pprint :as pprint])
+            [lib.macros :as m])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
    [java.net InetSocketAddress URLDecoder]
@@ -105,11 +104,13 @@
       (try
         (let [request (parse-request exchange)
               rsp-headers (.getResponseHeaders exchange)
-              {:keys [status headers body]
+              {:keys [close status headers body]
                :or {status 200}} (process request)]
-          (doseq [[k v] headers] (.add rsp-headers k v))
-          (.sendResponseHeaders exchange (int status) 0)
-          (m/suppress [java.io.IOException] (blit-stream exchange body)))
+          (try
+            (doseq [[k v] headers] (.add rsp-headers k v))
+            (.sendResponseHeaders exchange (int status) 0)
+            (m/suppress [java.io.IOException] (blit-stream exchange body))
+            (finally (when close (.close close)))))
         (catch Exception e
           (log/error e)
           (.. exchange getResponseHeaders (add "content-type" (str "text/plain; charset=" utf-8)))

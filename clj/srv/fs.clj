@@ -69,7 +69,7 @@
 
 (defn glob [root dir pattern]
   {:pre [(string? pattern)]}
-  (let [fs (FileSystems/getDefault)
+  (let [fs (.getFileSystem root)
         matcher (->> pattern (str "glob:" dir (.getSeparator fs)) (.getPathMatcher fs))]
     (-> dir
         (walk root)
