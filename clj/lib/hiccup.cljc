@@ -13,12 +13,6 @@
   {:pre [(string? s)]}
   (str/escape s html-esc))
 
-(defn- encode [s]
-  {:pre [((some-fn string? number?) s)]}
-  (-> s (str)
-      #?(:clj (java.net.URLEncoder/encode java.nio.charset.StandardCharsets/UTF_8)
-         :cljs (js/encodeURIComponent))))
-
 (defn- indent [n]
   {:pre [(int? n)]}
   (cons "\n" (repeat (* 2 n) " ")))
@@ -35,7 +29,7 @@
 (defmethod walk :num [depth n] (concat (indent depth) [(str n)]))
 
 (defmethod walk :map [_ attrs]
-  (for [[k v] attrs] (str " " (name k) "=\"" (encode v) "\"")))
+  (for [[k v] attrs] (str " " (name k) "=\"" (escape v) "\"")))
 
 (defmethod walk :seq [depth [x & xs :as xss]]
   (if-not (keyword? x)

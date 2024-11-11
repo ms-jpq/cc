@@ -18,9 +18,11 @@
         st (fs/walk root dir)]
     {:close st
      :body (h/html
-            [:div
-             (for [row (ip/st->seq st)]
-               [:div
-                [:span (str (:path row))]
-                [:span (str (:size row))]
-                [:span (str (:m-time row))]])])}))
+            [:main [:ul
+                    (for [{:keys [path dir? size m-time c-time]} (ip/st->seq st)
+                          :let [rel (-> root (.relativize path) str)]]
+                      [:li
+                       [:a {:href rel} rel]
+                       [:span size]
+                       [:span (str c-time)]
+                       [:span (str m-time)]])]])}))
