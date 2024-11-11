@@ -16,6 +16,13 @@
   {:pre [(path? path)]}
   (.toRealPath path (into-array LinkOption [])))
 
+(defn parents [path]
+  {:pre [(path? path)]}
+  (let [parent (.getParent path)]
+    (if parent
+      (cons parent (parents parent))
+      ())))
+
 (defn- os-stat [path]
   {:pre [(path? path)]
    :post [((some-fn map? nil?) %)]}

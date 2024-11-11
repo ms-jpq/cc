@@ -1,7 +1,5 @@
 {
-  "dependencies": {
-    "core-js": "^3"
-  },
+  "dependencies": {},
   "devDependencies": {
     "tailwindcss": "^3.3.2"
   },

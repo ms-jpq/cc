@@ -28,15 +28,15 @@
         st (fs/glob root dir pattern)]
     {:close st
      :body (h/html
-            [:main [:ul
-                    (for [{:keys [size m-time c-time]
-                           :as row} (ip/st->seq st)
-                          :let [rel (rel-path root row)]]
-                      [:li
-                       [:a {:href rel} rel]
-                       [:span size]
-                       [:span (str c-time)]
-                       [:span (str m-time)]])]])}))
+            [:ul
+             (for [{:keys [size m-time c-time]
+                    :as row} (ip/st->seq st)
+                   :let [rel (rel-path root row)]]
+               [:li
+                [:a {:href rel} rel]
+                [:span size]
+                [:span (str c-time)]
+                [:span (str m-time)]])])}))
 
 (defn- l->b [long]
   {:pre [(int? long)]}
@@ -90,6 +90,14 @@
                   [:meta {:name "viewport"
                           :content "width=device-width, initial-scale=1.0"}]]
                  [:body
+                  [:nav
+                   [:ol
+                    (for [parent (fs/parents current)
+                          :while (and (.startsWith parent root) (not= current root))
+                          :let [rel (rel-path root {:dir? true
+                                                    :path parent})]]
+                      [:li
+                       [:a {:href rel} rel]])]]
                   [:main
                    [:ul
                     (for [{:keys [size m-time c-time]
