@@ -13,7 +13,7 @@
 
 (def path-glob (str (UUID/randomUUID)))
 
-(def ^:private html-headers {"content-type" "text/html; charset=utf-8"})
+(def ^:private html-headers {:content-type "text/html; charset=utf-8"})
 
 (defn- rel-path [root {:keys [dir? path]}]
   {:pre [(fs/path? root) (boolean? dir?) (fs/path? path)]}
@@ -48,17 +48,17 @@
       (.update (-> path str .getBytes))
       (.update (l->b size))
       (.update (l->b (.toEpochMilli m-time))))
-    {"content-type" (-> path
-                        .toFile
-                        .getName
-                        URLConnection/guessContentTypeFromName
-                        (or "application/octet-stream"))
-     "etag" (->> md
-                 .digest
-                 (map (partial format "%02x"))
-                 (str/join ""))}))
+    {:content-type (-> path
+                       .toFile
+                       .getName
+                       URLConnection/guessContentTypeFromName
+                       (or "application/octet-stream"))
+     :etag (->> md
+                .digest
+                (map (partial format "%02x"))
+                (str/join ""))}))
 
-(defn handler-static [root data-dir {:keys [path query]}]
+(defn handler-static [root data-dir {:keys [path headers]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
   (let [current (.resolve root path)
         {:keys [link file? dir?]
@@ -68,10 +68,13 @@
       {:status 404
        :body "404"}
       file?
-      (let [_ nil]
-        {:status 200
-         :headers (single-file-headers attrs)
-         :body "hi"})
+      (let [{:keys [etag]
+             :as hdrs} (single-file-headers attrs)]
+        (if (= (-> headers :if-none-match first) etag)
+          {:status 304}
+          {:status 200
+           :headers hdrs
+           :body "hi"}))
       dir?
       (let [st (fs/walk 1 root current)]
         {:close st
@@ -80,12 +83,14 @@
                 [[:head
                   [:meta {:name "viewport"
                           :content "width=device-width, initial-scale=1.0"}]]
-                 [:body [:main [:ul
-                                (for [{:keys [size m-time c-time]
-                                       :as row} (ip/st->seq st)
-                                      :let [rel (rel-path root row)]]
-                                  [:li
-                                   [:a {:href rel} rel]
-                                   [:span size]
-                                   [:time {:datetime (str c-time)} (str c-time)]
-                                   [:time {:datetime (str m-time)} (str m-time)]])]]]])}))))
+                 [:body
+                  [:main
+                   [:ul
+                    (for [{:keys [size m-time c-time]
+                           :as row} (ip/st->seq st)
+                          :let [rel (rel-path root row)]]
+                      [:li
+                       [:a {:href rel} rel]
+                       [:span size]
+                       [:time {:datetime (str c-time)} (str c-time)]
+                       [:time {:datetime (str m-time)} (str m-time)]])]]]])}))))

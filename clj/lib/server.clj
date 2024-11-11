@@ -1,17 +1,17 @@
 (ns lib.server
-  (:require [clojure.data.json :as json]
-            [clojure.datafy :refer [datafy]]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [lib.macros :as m])
+  (:require
+   [clojure.datafy :refer [datafy]]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [lib.macros :as m])
   (:import
    [com.sun.net.httpserver HttpExchange HttpHandler HttpServer Headers]
    [java.net InetSocketAddress URLDecoder]
    [java.nio.charset StandardCharsets]
    [java.util.concurrent Executors]))
 
-(def ^:private utf-8 (str StandardCharsets/UTF_8))
+(def utf-8 (str StandardCharsets/UTF_8))
 
 (defn- parse-addr [addr]
   {:pre [(instance? InetSocketAddress addr)]
@@ -82,19 +82,16 @@
   #(cond (nil? %2) :nil
          (bytes? %2) :bytes
          (string? %2) :str
-         (map? %2) :map
          (seqable? %2) :seq))
 
 (defmethod blit :nil [_ _] nil)
 (defmethod blit :bytes [st b] (.write st b))
-(defmethod blit :str [st s] (.write st s))
+(defmethod blit :str [st s] (.write st (.getBytes s utf-8)))
 (defmethod blit :seq [st seq] (doseq [v seq] (blit st v)))
-(defmethod blit :map [st m] (json/write m st :escape-unicode false :escape-slash false))
 
 (defn- blit-stream [exchange body]
   {:pre [(instance? HttpExchange exchange)]}
-  (with-open [st (-> exchange .getResponseBody io/writer)]
-    (blit st body)))
+  (-> exchange .getResponseBody (blit body)))
 
 (defn- make-handler [process]
   {:pre [(fn? process)]}
@@ -107,7 +104,7 @@
               {:keys [close status headers body]
                :or {status 200}} (process request)]
           (try
-            (doseq [[k v] headers] (.add rsp-headers k v))
+            (doseq [[k v] headers] (.add rsp-headers (name k) v))
             (.sendResponseHeaders exchange (int status) 0)
             (m/suppress [java.io.IOException] (blit-stream exchange body))
             (finally (when close (.close close)))))
