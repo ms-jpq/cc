@@ -1,10 +1,12 @@
 (ns srv.index
   (:require
+   [clojure.string :as str]
    [lib.hiccup :as h]
    [lib.interop :as ip]
    [lib.prelude :as lib]
    [srv.fs :as fs])
   (:import [java.net URLConnection]
+           [java.nio ByteBuffer]
            [java.security MessageDigest]
            [java.time Instant]
            [java.util UUID]))
@@ -35,19 +37,26 @@
                        [:span (str c-time)]
                        [:span (str m-time)]])]])}))
 
+(defn- l->b [long]
+  {:pre [(int? long)]}
+  (-> (ByteBuffer/allocate 8) (.putLong long) .array))
+
 (defn- single-file-headers [{:keys [path size m-time]}]
   {:pre [(fs/path? path) (int? size) (instance? Instant m-time)]}
   (let [md (MessageDigest/getInstance "MD5")]
-    (println (-> path str .getBytes))
+    (doto md
+      (.update (-> path str .getBytes))
+      (.update (l->b size))
+      (.update (l->b (.toEpochMilli m-time))))
     {"content-type" (-> path
                         .toFile
                         .getName
                         URLConnection/guessContentTypeFromName
                         (or "application/octet-stream"))
-     "etag" (-> md
-                (.update (-> path str (.getBytes "UTF-8")))
-                .digest
-                .toString)}))
+     "etag" (->> md
+                 .digest
+                 (map (partial format "%02x"))
+                 (str/join ""))}))
 
 (defn handler-static [root data-dir {:keys [path query]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
