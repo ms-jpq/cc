@@ -5,6 +5,8 @@
    [lib.prelude :as lib]
    [srv.fs :as fs])
   (:import [java.net URLConnection]
+           [java.security MessageDigest]
+           [java.time Instant]
            [java.util UUID]))
 
 (def path-glob (str (UUID/randomUUID)))
@@ -33,15 +35,19 @@
                        [:span (str c-time)]
                        [:span (str m-time)]])]])}))
 
-(defn- single-file-headers [{:keys [path]}]
-  {:pre [(fs/path? path)]}
-  (let [mime (-> path
-                 .toFile
-                 .getName
-                 URLConnection/guessContentTypeFromName
-                 (or "application/octet-stream"))]
-    {"content-type" mime
-     "etag" ""}))
+(defn- single-file-headers [{:keys [path size m-time]}]
+  {:pre [(fs/path? path) (int? size) (instance? Instant m-time)]}
+  (let [md (MessageDigest/getInstance "MD5")]
+    (println (-> path str .getBytes))
+    {"content-type" (-> path
+                        .toFile
+                        .getName
+                        URLConnection/guessContentTypeFromName
+                        (or "application/octet-stream"))
+     "etag" (-> md
+                (.update (-> path str (.getBytes "UTF-8")))
+                .digest
+                .toString)}))
 
 (defn handler-static [root data-dir {:keys [path query]}]
   {:pre [(fs/path? root) (fs/path? data-dir)]}
@@ -55,7 +61,7 @@
       file?
       (let [_ nil]
         {:status 200
-         :headers (single-file-headers current)
+         :headers (single-file-headers attrs)
          :body "hi"})
       dir?
       (let [st (fs/walk 1 root current)]
