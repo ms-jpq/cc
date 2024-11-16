@@ -29,16 +29,18 @@
 
 (defn stat [path]
   {:pre [(ip/path? path)]
-   :post [(map? %)]}
-  (let [{:keys [is-symbolic-link is-directory is-regular-file size last-modified-time creation-time]} (os-stat path)]
-    {:path path
-     :link (when is-symbolic-link
-             (canonicalize path))
-     :file? is-regular-file
-     :dir? is-directory
-     :size size
-     :m-time (.toInstant last-modified-time)
-     :c-time (.toInstant creation-time)}))
+   :post [((some-fn map? nil?) %)]}
+  (let [stat (os-stat path)
+        {:keys [is-symbolic-link is-directory is-regular-file size last-modified-time creation-time]} stat]
+    (when stat
+      {:path path
+       :link (when is-symbolic-link
+               (canonicalize path))
+       :file? is-regular-file
+       :dir? is-directory
+       :size size
+       :m-time (.toInstant last-modified-time)
+       :c-time (.toInstant creation-time)})))
 
 (defn- stream-dir [max-depth depth dir]
   {:pre [(int? max-depth) (int? depth) (ip/path? dir)]}

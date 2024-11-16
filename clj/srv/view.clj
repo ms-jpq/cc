@@ -1,7 +1,8 @@
 (ns srv.view
   (:require
    [clojure.string :as str]
-   [lib.interop :as ip])
+   [lib.interop :as ip]
+   [srv.fs :as fs])
   (:import [java.io FileInputStream]
            [java.net URLConnection]
            [java.nio ByteBuffer]
@@ -35,16 +36,23 @@
   (-> path .toFile FileInputStream.))
 
 (defn handler [root data-dir
-               {:keys [method headers]
-                :as request}]
+               {:keys [method path headers]
+                :as _}]
   {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [{:keys [if-none-match range]} headers
+        current (.resolve root path)
+        {:keys [link dir?]
+         :or {link (ip/path "/")}
+         :as attrs} (fs/stat current)
         {:keys [etag]
-         :as hdrs} (file-headers attrs)
-        st (when (= method :get)
-             (stream-file path range))]
-    (if (= (last if-none-match) etag)
-      {:status 304}
-      {:status 200
-       :headers hdrs
-       :body st})))
+         :as hdrs} (if attrs (file-headers attrs) nil)]
+    (cond (or (nil? attrs) (.startsWith link root)) {:status 404
+                                                     :body "404"}
+          dir? {:status 307
+                :headers {:location (str path "/")}}
+          (= (last if-none-match) etag) {:status 304}
+          :else (let [st (when (= method :get)
+                           (stream-file path range))]
+                  {:status 200
+                   :headers hdrs
+                   :body st}))))

@@ -2,9 +2,7 @@
   (:require
    [lib.hiccup :as h]
    [lib.interop :as ip]
-   [lib.prelude :as lib]
-   [srv.fs :as fs]
-   [srv.view :as view]))
+   [srv.fs :as fs]))
 
 (def html-headers {:content-type "text/html; charset=utf-8"})
 
@@ -22,12 +20,12 @@
     [:body
      [:nav
       [:ol
-       (for [parent (fs/p-parents current)
-             :while (and (.startsWith parent root) (not= current root))
-             :let [rel (rel-path root {:dir? true
-                                       :path parent})]]
-         [:li
-          [:a {:href rel} rel]])]]
+       (reverse (for [parent (fs/p-parents current)
+                      :while (and (.startsWith parent root) (not= current root))
+                      :let [rel (rel-path root {:dir? true
+                                                :path parent})]]
+                  [:li
+                   [:a {:href rel} rel]]))]]
      [:main
       [:ul
        (for [{:keys [size m-time c-time]
@@ -41,18 +39,10 @@
 
 (defn handler [root data-dir
                {:keys [path]
-                :as request}]
+                :as _}]
   {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [current (.resolve root path)
-        {:keys [link file? dir?]
-         :as attrs} (fs/stat current)]
-    (cond
-      (or (nil? attrs) (and (lib/not-nil? link) (not (.startsWith link root))))
-      {:status 404
-       :body "404"}
-      file? (view/handler root data-dir attrs request)
-      dir?
-      (let [st (fs/walk 1 root current)]
-        {:close st
-         :headers html-headers
-         :body (index root current st)}))))
+        st (fs/walk 1 root current)]
+    {:close st
+     :headers html-headers
+     :body (index root current st)}))
