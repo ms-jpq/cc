@@ -1,6 +1,6 @@
 {:bundle-cmd {:none ["false"]
-              :default ["make" "bundle"]}
+              :default ["make" "out/bundle.js"]}
  :optimizations :advanced
- :source-map "out/main.js.map"
+ :source-map "out/web/main.js.map"
  :target :bundle
  :verbose true}

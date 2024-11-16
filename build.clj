@@ -3,7 +3,7 @@
    [clojure.tools.build.api :as b]))
 
 (def ^:private class-dir "out/classes")
-(def ^:private uber-file "out/uber.jar")
+(def ^:private uber-file "out/compiled.jar")
 (def ^:private basis (delay (b/create-basis {:project "deps.edn"})))
 
 (defn uber [_]
