@@ -14,7 +14,7 @@ out/uber.jar: out/web/site.css out/web/main.js $(shell shopt -u failglob && prin
 
 out/run.jar: out/uber.jar
 	{
-		printf -- '%s\n' '#!/usr/bin/env -- java -jar'
+		printf -- '%s\n' '#!/usr/bin/env -S -- java -jar'
 		cat -- '$<'
 	} > '$@'
 	chmod +x -- '$@'
