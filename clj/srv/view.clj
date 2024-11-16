@@ -35,9 +35,8 @@
   (-> path .toFile FileInputStream.))
 
 (defn handler [root data-dir
-               {:keys [path]
-                :as attrs}
-               {:keys [method headers]}]
+               {:keys [method headers]
+                :as request}]
   {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [{:keys [if-none-match range]} headers
         {:keys [etag]

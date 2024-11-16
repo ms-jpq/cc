@@ -8,7 +8,8 @@
    [lib.server :as srv]
    [srv.fs :as fs]
    [srv.glob :as glob]
-   [srv.index :as idx]))
+   [srv.index :as idx]
+   [srv.view :as view]))
 
 (def ^:private path-sep "/")
 
@@ -23,7 +24,8 @@
             request (assoc request :path path)]
         (cond
           (= path glob/path) (glob/handler root data-dir request)
-          :else (idx/handler root data-dir request))))))
+          (or (str/ends-with? path path-sep) (= path "")) (idx/handler root data-dir request)
+          :else (view/handler root data-dir request))))))
 
 (defn -main [& args]
   {:pre [(seqable? args)]}
