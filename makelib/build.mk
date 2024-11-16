@@ -10,7 +10,7 @@ out/site.css::
 out/main.js::
 	clojure -M:buildc-cljs
 
-bundle:
+out/bundle:
 	true
 
 build: lint out/index.html out/site.css out/main.js

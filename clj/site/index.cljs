@@ -1,6 +1,5 @@
 (ns site.index
-  (:require
-   ))
+  ())
 
 (enable-console-print!)
 (.clear js/console)

@@ -2,8 +2,8 @@
   (:require
    [lib.hiccup :as h]
    [lib.interop :as ip]
-   [srv.index :as idx]
-   [srv.fs :as fs])
+   [srv.fs :as fs]
+   [srv.index :as idx])
   (:import
    [java.util UUID]))
 
