@@ -11,8 +11,8 @@
   (let [rel (-> root (.relativize path) str)]
     (if dir? (str rel "/") rel)))
 
-(defn- index [root current st]
-  {:pre [(ip/path? root) (ip/path? current) (ip/stream? st)]}
+(defn- index [prefix root current st]
+  {:pre [(string? prefix) (ip/path? root) (ip/path? current) (ip/stream? st)]}
   (h/html
    [[:head
      [:meta {:name "viewport"
@@ -25,7 +25,7 @@
                       :let [rel (rel-path root {:dir? true
                                                 :path parent})]]
                   [:li
-                   [:a {:href rel} rel]]))]]
+                   [:a {:href (str prefix (if (= rel "/") "" rel))} rel]]))]]
      [:main
       [:ul
        (for [{:keys [size m-time c-time]
@@ -37,7 +37,7 @@
           [:time {:datetime (str c-time)} (str c-time)]
           [:time {:datetime (str m-time)} (str m-time)]])]]]]))
 
-(defn handler [root data-dir
+(defn handler [prefix root data-dir
                {:keys [path]
                 :as _}]
   {:pre [(ip/path? root) (ip/path? data-dir)]}
@@ -45,4 +45,4 @@
         st (fs/walk 1 root current)]
     {:close st
      :headers html-headers
-     :body (index root current st)}))
+     :body (index prefix root current st)}))

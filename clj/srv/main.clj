@@ -24,7 +24,7 @@
             request (assoc request :path path)]
         (cond
           (= path glob/path) (glob/handler root data-dir request)
-          (or (str/ends-with? path path-sep) (= path "")) (idx/handler root data-dir request)
+          (or (str/ends-with? path path-sep) (= path "")) (idx/handler prefix root data-dir request)
           :else (view/handler root data-dir request))))))
 
 (defn -main [& args]
