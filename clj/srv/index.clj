@@ -30,7 +30,7 @@
       [:ul
        (for [{:keys [size m-time c-time]
               :as row} (ip/st->seq st)
-             :let [rel (rel-path root row)]]
+             :let [rel (rel-path current row)]]
          [:li
           [:a {:href rel} rel]
           [:span size]
