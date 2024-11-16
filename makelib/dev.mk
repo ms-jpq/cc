@@ -10,7 +10,7 @@ target/public/css:
 	mkdir -p -- "$@"
 
 dev-clj:
-	watchexec --shell none --restart  --stop-timeout 0 -- clojure -M:dev-clj --port 9090
+	watchexec --shell none --restart  --stop-timeout 0 -- clojure -M:run-clj --port 9090
 
 dev-cljs: target/public/css target/public/index.html
 	clojure -M:dev-cljs

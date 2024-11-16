@@ -1,16 +1,22 @@
 .PHONY: build
 
-out/index.html: clj/site/index.html
-	mkdir --parents -- "$$(dirname -- '$@')"
-	cp --recursive --force -- '$<' '$@'
+out/web:
+	mkdir -p -- '$@'
 
-out/site.css::
+out/web/site.css: $(shell shopt -u failglob && printf -- '%s ' ./clj/**/*.clj ./css/*) | out/web
 	node_modules/.bin/tailwindcss --minify --input css/site.scss --output '$@'
 
-out/main.js::
+out/web/main.js: $(shell shopt -u failglob && printf -- '%s ' ./*.edn ./clj/**/*.clj{c,s}) | out/web
 	clojure -M:build-cljs
 
-out/srv.jar:
-	clojure -T:build-clj jar
+out/uber.jar: out/web/site.css out/web/main.js $(shell shopt -u failglob && printf -- '%s ' ./*.{clj,edn} ./clj/**/*.cl{j,jc})
+	clojure -T:build-clj uber
 
-build: out/srv.jar out/index.html out/site.css out/main.js
+out/run.jar: out/uber.jar
+	{
+		printf -- '%s\n' '#!/usr/bin/env -- java -jar'
+		cat -- '$<'
+	} > '$@'
+	chmod +x -- '$@'
+
+build: out/run.jar

@@ -9,7 +9,7 @@
 (defn uber [_]
   (doseq [p [uber-file class-dir]]
     (b/delete {:path p}))
-  (b/copy-dir {:src-dirs ["clj"]
+  (b/copy-dir {:src-dirs ["clj", "out/web"]
                :target-dir class-dir})
   (b/compile-clj {:basis @basis
                   :ns-compile '[srv.main]

@@ -11,7 +11,7 @@
                               "--lint" "clj"]}
            :fmt {:deps {dev.weavejester/cljfmt {:mvn/version "RELEASE"}}
                  :ns-default cljfmt.tool}
-           :dev-clj {:main-opts ["--main" "srv.main"]}
+           :run-clj {:main-opts ["--main" "srv.main"]}
            :dev-cljs {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
                                    com.bhauman/figwheel-main {:mvn/version "RELEASE"}}
                       :main-opts ["--main" "figwheel.main"
