@@ -9,7 +9,8 @@
    [srv.fs :as fs]
    [srv.glob :as glob]
    [srv.index :as idx]
-   [srv.view :as view]))
+   [srv.view :as view])
+  (:gen-class))
 
 (def ^:private path-sep "/")
 

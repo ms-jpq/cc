@@ -1,5 +1,6 @@
 {:paths ["clj" "target"]
- :deps {org.clojure/clojurescript {:mvn/version "RELEASE"}
+ :deps {org.clojure/clojure {:mvn/version "RELEASE"}
+        org.clojure/clojurescript {:mvn/version "RELEASE"}
         org.clojure/data.json {:mvn/version "RELEASE"}
         org.clojure/tools.cli {:mvn/version "RELEASE"}
         org.clojure/tools.logging {:mvn/version "RELEASE"}}
@@ -17,7 +18,8 @@
                                   "--compile-opts" "dev.cljs.edn"
                                   "--compile" "site.index"
                                   "--repl"]}
-           :build-clj {:main-opts ["--main" "cljs.main"]}
+           :build-clj {:extra-deps {io.github.clojure/tools.build {:mvn/version "RELEASE"}}
+                       :ns-default build}
            :build-cljs {:main-opts ["--main" "cljs.main"
                                     "--compile-opts" "build.cljs.edn"
                                     "--compile" "site.index"]}}}
