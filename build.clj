@@ -2,19 +2,18 @@
   (:require [clojure.tools.build.api :as b]))
 
 (def ^:private class-dir "out/classes")
-(def ^:private lib 'cc/srv)
-(def ^:private version (b/git-count-revs nil))
-(def ^:private jar-file (->> lib name (format "out/%s.jar")))
-
+(def ^:private uber-file "out/uber.jar")
 (def ^:private basis (delay (b/create-basis {:project "deps.edn"})))
 
-(defn jar [_]
-  (b/write-pom {:class-dir class-dir
-                :lib lib
-                :version version
-                :basis @basis
-                :src-dirs ["clj"]})
+(defn uber [_]
+  (doseq [p [uber-file class-dir]]
+    (b/delete {:path p}))
   (b/copy-dir {:src-dirs ["clj"]
                :target-dir class-dir})
-  (b/jar {:class-dir class-dir
-          :jar-file jar-file}))
+  (b/compile-clj {:basis @basis
+                  :ns-compile '[srv.main]
+                  :class-dir class-dir})
+  (b/uber {:class-dir class-dir
+           :uber-file uber-file
+           :basis @basis
+           :main 'srv.main}))
