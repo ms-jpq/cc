@@ -1,5 +1,6 @@
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require
+   [clojure.tools.build.api :as b]))
 
 (def ^:private class-dir "out/classes")
 (def ^:private uber-file "out/uber.jar")
