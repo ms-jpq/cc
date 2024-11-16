@@ -3,19 +3,19 @@
         org.clojure/data.json {:mvn/version "RELEASE"}
         org.clojure/tools.cli {:mvn/version "RELEASE"}
         org.clojure/tools.logging {:mvn/version "RELEASE"}}
- :aliases {:build {:main-opts ["--main" "cljs.main"
-                               "--compile-opts" "build.co.edn"
-                               "--compile" "site.index"]}
-           :lint {:deps {clj-kondo/clj-kondo {:mvn/version "RELEASE"}}
+ :aliases {:lint {:deps {clj-kondo/clj-kondo {:mvn/version "RELEASE"}}
                   :main-opts ["-m" "clj-kondo.main"
                               "--parallel"
                               "--fail-level" "error"
                               "--lint" "clj"]}
            :fmt {:deps {dev.weavejester/cljfmt {:mvn/version "RELEASE"}}
                  :ns-default cljfmt.tool}
-           :dev {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
-                              com.bhauman/figwheel-main {:mvn/version "RELEASE"}}
-                 :main-opts ["--main" "figwheel.main"
-                             "--compile-opts" "dev.co.edn"
-                             "--compile" "site.index"
-                             "--repl"]}}}
+           :dev-cljs {:extra-deps {org.slf4j/slf4j-simple {:mvn/version "RELEASE"}
+                                   com.bhauman/figwheel-main {:mvn/version "RELEASE"}}
+                      :main-opts ["--main" "figwheel.main"
+                                  "--compile-opts" "dev.cljs.edn"
+                                  "--compile" "site.index"
+                                  "--repl"]}
+           :build-cljs {:main-opts ["--main" "cljs.main"
+                                    "--compile-opts" "build.cljs.edn"
+                                    "--compile" "site.index"]}}}

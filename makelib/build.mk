@@ -8,7 +8,7 @@ out/site.css::
 	node_modules/.bin/tailwindcss --minify --input css/site.scss --output '$@'
 
 out/main.js::
-	clojure -M:build
+	clojure -M:buildc-cljs
 
 bundle:
 	true
