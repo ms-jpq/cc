@@ -50,19 +50,23 @@
           :let [[_ lohi] range
                 parsed (m/suppress
                         [NumberFormatException]
-                        (map #(when % (Integer/parseInt %)) lohi))]
+                        (map #(when % (Long/parseLong %)) lohi))]
           :when parsed
           :let [[lo hi] parsed]]
-      [lo hi])
+      [(or lo 0) hi])
     (into [] $)))
 
-(defn- stream-file [path ranges]
-  {:pre [(ip/path? path) (seqable? ranges)]}
+(defn- stream-file [{:keys [path size]} ranges]
+  {:pre [(ip/path? path) (int? size) (seqable? ranges)]}
   (let [len (count ranges)
         st (-> path .toFile FileInputStream.)]
     (cond
       (= len 0) st
-      (= len 1) st)))
+      (= len 1) (let [[lo hi] (first ranges)
+                      hi (or hi size)]
+                  (.skip st lo)
+                  (io/input-stream (io/reader st :length (- hi lo))))
+      :else nil)))
 
 (defn handler [root data-dir
                {:keys [method path headers]
@@ -84,7 +88,7 @@
                 :headers {:location (str path "/")}}
           (= (last if-none-match) etag) {:status 304}
           :else (let [st (when (= method :get)
-                           (stream-file path ranges))]
+                           (stream-file attrs ranges))]
                   {:status 200
                    :headers hdrs
                    :body st}))))
