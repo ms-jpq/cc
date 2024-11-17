@@ -37,9 +37,18 @@
    :etag (md5 (-> path str .getBytes) (l->b size) (l->b (.toEpochMilli m-time)))
    :accept-ranges "bytes"})
 
-(defn- stream-file [path pos]
-  {:pre [(ip/path? path) (string? pos)]}
-  (-> path .toFile FileInputStream.))
+(defn- parse-range [header]
+  {:pre [((some-fn string? nil?) header)]
+   :post [(nil? %) (string? %)]}
+  (when header
+    (-> header
+        (str/replace-first #"^bytes=" ""))))
+
+(defn- stream-file [path range-header]
+  {:pre [(ip/path? path) ((some-fn string? nil?) range-header)]}
+
+  (let [st (-> path .toFile FileInputStream.)]
+    st))
 
 (defn handler [root data-dir
                {:keys [method path headers]
@@ -49,6 +58,7 @@
         current (if (str/starts-with? path resource-path)
                   (io/resource (lib/remove-prefix path resource-path))
                   (.resolve root path))
+        ranges (parse-range range)
         {:keys [link dir?]
          :or {link (ip/path "/")}
          :as attrs} (fs/stat current)
@@ -60,7 +70,7 @@
                 :headers {:location (str path "/")}}
           (= (last if-none-match) etag) {:status 304}
           :else (let [st (when (= method :get)
-                           (stream-file path range))]
+                           (stream-file path ranges))]
                   {:status 200
                    :headers hdrs
                    :body st}))))
