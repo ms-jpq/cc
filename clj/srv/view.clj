@@ -41,12 +41,15 @@
   {:pre [((some-fn string? nil?) header)]
    :post [(nil? %) (string? %)]}
   (when header
-    (-> header
-        (str/replace-first #"^bytes=" ""))))
+    (as-> header $
+      (str/replace-first $ #"^bytes=" "")
+      (str/split $ #"\s*,\s*")
+      (map str/trim $)
+      (for [range (str/split $ #"-")]
+        range))))
 
-(defn- stream-file [path range-header]
-  {:pre [(ip/path? path) ((some-fn string? nil?) range-header)]}
-
+(defn- stream-file [path ranges]
+  {:pre [(ip/path? path) ((some-fn seqable? nil?) ranges)]}
   (let [st (-> path .toFile FileInputStream.)]
     st))
 

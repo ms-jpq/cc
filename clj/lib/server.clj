@@ -40,7 +40,7 @@
   {:pre [(instance? Headers headers)]
    :post [(map? %)]}
   (->> headers
-       (map (fn [[k v]] [(-> k .toLowerCase keyword) (datafy v)]))
+       (map (fn [[k v]] [(-> k str/lower-case keyword) (datafy v)]))
        (into {})))
 
 (defn parse-header-params [name headers]
@@ -55,7 +55,7 @@
                  (str/split $ #"\s+")
                  (remove str/blank? $)
                  (map #(str/split % #"=" 2) $)
-                 (map (fn [[k v]] [(-> k .toLowerCase keyword) v]) $)
+                 (map (fn [[k v]] [(-> k str/lower-case keyword) v]) $)
                  (into {} $))]
     [(str/trim value) params]))
 
