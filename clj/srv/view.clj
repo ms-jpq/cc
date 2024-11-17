@@ -58,8 +58,11 @@
 
 (defn- stream-file [path ranges]
   {:pre [(ip/path? path) (seqable? ranges)]}
-  (let [st (-> path .toFile FileInputStream.)]
-    st))
+  (let [len (count ranges)
+        st (-> path .toFile FileInputStream.)]
+    (cond
+      (= len 0) st
+      (= len 1) st)))
 
 (defn handler [root data-dir
                {:keys [method path headers]
