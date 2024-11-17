@@ -63,7 +63,7 @@
          :or {link (ip/path "/")}
          :as attrs} (fs/stat current)
         {:keys [etag]
-         :as hdrs} (if attrs (file-headers attrs) nil)]
+         :as hdrs} (when attrs (file-headers attrs))]
     (cond (or (nil? attrs) (.startsWith link root)) {:status 404
                                                      :body "404"}
           dir? {:status 307
