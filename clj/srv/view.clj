@@ -80,17 +80,21 @@
                   (.resolve root path))
         ranges (parse-range range)
         {:keys [link dir?]
-         :or {link (ip/path "/")}
          :as attrs} (fs/stat current)
         {:keys [etag]
          :as hdrs} (when attrs (file-headers attrs))]
-    (cond (or (nil? attrs) (.startsWith link root)) {:status 404
-                                                     :body "404"}
-          dir? {:status 307
-                :headers {:location (str path "/")}}
-          (= (last if-none-match) etag) {:status 304}
-          :else (let [st (when (= method :get)
-                           (stream-file attrs ranges))]
-                  {:status 200
-                   :headers hdrs
-                   :body st}))))
+    (cond
+      (or (nil? attrs) (-> link (or (ip/path "/")) (.startsWith root)))
+      {:status 404
+       :body "404"}
+      dir?
+      {:status 307
+       :headers {:location (str path "/")}}
+      (= (last if-none-match) etag)
+      {:status 304}
+      :else
+      (let [st (when (= method :get)
+                 (stream-file attrs ranges))]
+        {:status 200
+         :headers hdrs
+         :body st}))))
