@@ -1,6 +1,7 @@
 (ns srv.view
   (:require
    [clojure.java.io :as io]
+   [clojure.pprint :as pp]
    [clojure.string :as str]
    [lib.interop :as ip]
    [lib.macros :as m]
@@ -39,24 +40,26 @@
    :accept-ranges "bytes"})
 
 (defn- parse-range [header]
-  {:pre [((some-fn string? nil?) header)]
+  {:pre [((some-fn seqable? nil?) header)]
    :post [(seqable? %)]}
-  (as-> header $
-    (or $ "")
-    (str/replace-first $ #"^bytes=" "")
-    (str/split $ #",")
-    (map str/trim $)
-    (for [r $
-          :let [range (re-seq #"(\d+)?-(\d+)?" r)]
-          :when range
-          :let [[_ lohi] range
-                parsed (m/suppress
-                        [NumberFormatException]
-                        (map #(when % (Long/parseLong %)) lohi))]
-          :when parsed
-          :let [[lo hi] parsed]]
-      [(or lo 0) hi])
-    (into [] $)))
+  (->> header
+       (mapcat
+        (fn [hdr]
+          (as-> hdr $
+            (str/replace-first $ #"^bytes=" "")
+            (str/split $ #",")
+            (map str/trim $)
+            (for [r $
+                  :let [range (re-seq #"(\d+)?-(\d+)?" r)]
+                  :when range
+                  :let [[_ lohi] range
+                        parsed (m/suppress
+                                [NumberFormatException]
+                                (map #(when % (Long/parseLong %)) lohi))]
+                  :when parsed
+                  :let [[lo hi] parsed]]
+              [(or lo 0) hi]))))
+       (into [])))
 
 (defn- stream-file [{:keys [path size]} ranges]
   {:pre [(ip/path? path) (int? size) (seqable? ranges)]}
@@ -64,10 +67,8 @@
         st (-> path .toFile FileInputStream.)]
     (cond
       (= len 0) st
-      (= len 1) (let [[lo hi] (first ranges)
-                      hi (or hi size)]
-                  (.skip st lo)
-                  (io/input-stream (io/reader st :length (- hi lo))))
+      (= len 1) (let [[lo] (first ranges)]
+                  (.skip st lo))
       :else nil)))
 
 (defn handler [root data-dir
