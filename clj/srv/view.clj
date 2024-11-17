@@ -1,7 +1,6 @@
 (ns srv.view
   (:require
    [clojure.java.io :as io]
-   [clojure.pprint :as pp]
    [clojure.string :as str]
    [lib.interop :as ip]
    [lib.macros :as m]
@@ -42,24 +41,17 @@
 (defn- parse-range [header]
   {:pre [((some-fn seqable? nil?) header)]
    :post [(seqable? %)]}
-  (->> header
-       (mapcat
-        (fn [hdr]
-          (as-> hdr $
-            (str/replace-first $ #"^bytes=" "")
-            (str/split $ #",")
-            (map str/trim $)
-            (for [r $
-                  :let [range (re-seq #"(\d+)?-(\d+)?" r)]
-                  :when range
-                  :let [[_ lohi] range
-                        parsed (m/suppress
-                                [NumberFormatException]
-                                (map #(when % (Long/parseLong %)) lohi))]
-                  :when parsed
-                  :let [[lo hi] parsed]]
-              [(or lo 0) hi]))))
-       (into [])))
+  (let [ranges (->> header
+                    (map #(str/replace-first % #"^bytes=" ""))
+                    (mapcat (partial re-seq #"(\d+)?-(\d+)?")))]
+    (for [range ranges
+          :let [[_ & lohi] range
+                parsed (m/suppress
+                        [NumberFormatException]
+                        (map #(when % (Long/parseLong %)) lohi))]
+          :when parsed
+          :let [[lo hi] parsed]]
+      [(or lo 0) hi])))
 
 (defn- stream-file [{:keys [path size]} ranges]
   {:pre [(ip/path? path) (int? size) (seqable? ranges)]}
@@ -68,7 +60,8 @@
     (cond
       (= len 0) st
       (= len 1) (let [[lo] (first ranges)]
-                  (.skip st lo))
+                  (.skip st lo)
+                  st)
       :else nil)))
 
 (defn handler [root data-dir
