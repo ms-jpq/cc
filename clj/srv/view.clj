@@ -40,12 +40,14 @@
 
 (defn- parse-range [header]
   {:pre [((some-fn string? nil?) header)]
-   :post [(seq? %)]}
+   :post [(seqable? %)]}
   (as-> header $
+    (or $ "")
     (str/replace-first $ #"^bytes=" "")
     (str/split $ #",")
     (map str/trim $)
-    (for [range (re-seq #"(\d+)?-(\d+)?" $)
+    (for [r $
+          :let [range (re-seq #"(\d+)?-(\d+)?" r)]
           :when range
           :let [[_ lohi] range
                 parsed (m/suppress
