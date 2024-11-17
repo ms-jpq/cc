@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [lib.interop :as ip]
+   [lib.macros :as m]
    [lib.prelude :as lib]
    [srv.fs :as fs])
   (:import [java.io FileInputStream]
@@ -39,17 +40,24 @@
 
 (defn- parse-range [header]
   {:pre [((some-fn string? nil?) header)]
-   :post [(nil? %) (string? %)]}
-  (when header
-    (as-> header $
-      (str/replace-first $ #"^bytes=" "")
-      (str/split $ #"\s*,\s*")
-      (map str/trim $)
-      (for [range (str/split $ #"-")]
-        range))))
+   :post [(seq? %)]}
+  (as-> header $
+    (str/replace-first $ #"^bytes=" "")
+    (str/split $ #",")
+    (map str/trim $)
+    (for [range (re-seq #"(\d+)?-(\d+)?" $)
+          :when range
+          :let [[_ lohi] range
+                parsed (m/suppress
+                        [NumberFormatException]
+                        (map #(when % (Integer/parseInt %)) lohi))]
+          :when parsed
+          :let [[lo hi] parsed]]
+      [lo hi])
+    (into [] $)))
 
 (defn- stream-file [path ranges]
-  {:pre [(ip/path? path) ((some-fn seqable? nil?) ranges)]}
+  {:pre [(ip/path? path) (seqable? ranges)]}
   (let [st (-> path .toFile FileInputStream.)]
     st))
 
