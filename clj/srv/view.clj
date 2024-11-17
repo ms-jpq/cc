@@ -55,14 +55,17 @@
 
 (defn- stream-file [{:keys [path size]} ranges]
   {:pre [(ip/path? path) (int? size) (seqable? ranges)]}
-  (let [len (count ranges)
-        st (-> path .toFile FileInputStream.)]
+  (let [st (-> path .toFile FileInputStream.)]
     (cond
-      (= len 0) st
-      (= len 1) (let [[lo] (first ranges)]
-                  (.skip st lo)
-                  st)
-      :else nil)))
+      (empty? ranges)
+      st
+      (= (count ranges) 1)
+      (let [[[lo hi] & rs] ranges]
+        (when (and (nil? hi) (empty? rs))
+          (.skip st lo)
+          st))
+      :else
+      nil)))
 
 (defn handler [root data-dir
                {:keys [method path headers]
@@ -86,9 +89,13 @@
        :headers {:location (str path "/")}}
       (= (last if-none-match) etag)
       {:status 304}
+      (not= method :get)
+      {:status 200
+       :headers hdrs}
       :else
-      (let [st (when (= method :get)
-                 (stream-file attrs ranges))]
-        {:status 200
-         :headers hdrs
-         :body st}))))
+      (let [st (stream-file attrs ranges)]
+        (if st
+          {:status 200
+           :headers hdrs
+           :body st}
+          {:status 501})))))
