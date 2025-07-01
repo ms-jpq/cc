@@ -54,18 +54,15 @@
       [(or lo 0) hi])))
 
 (defn- stream-file [{:keys [path size]} ranges]
-  {:pre [(ip/path? path) (int? size) (seqable? ranges)]}
+  {:pre [(ip/path? path) (int? size) (seqable? ranges)]
+   :post [((some-fn instance? nil?) FileInputStream %)]}
   (let [st (-> path .toFile FileInputStream.)]
-    (cond
-      (empty? ranges)
-      st
-      (= (count ranges) 1)
-      (let [[[lo hi] & rs] ranges]
-        (when (and (nil? hi) (empty? rs))
-          (.skip st lo)
-          st))
-      :else
-      nil)))
+    (cond (empty? ranges) st
+          (= (count ranges) 1) (let [[[lo hi] & rs] ranges]
+                                 (when (and (nil? hi) (empty? rs))
+                                   (.skip st lo)
+                                   st))
+          :else nil)))
 
 (defn handler [root data-dir
                {:keys [method path headers]
