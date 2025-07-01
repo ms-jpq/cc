@@ -7,11 +7,13 @@
    [java.util.stream Stream]))
 
 (defn canonicalize [path]
-  {:pre [(ip/path? path)]}
+  {:pre [(ip/path? path)]
+   :post [(ip/path? %)]}
   (.toRealPath path (into-array LinkOption [])))
 
 (defn p-parents [path]
-  {:pre [(ip/path? path)]}
+  {:pre [(ip/path? path)]
+   :post [(seqable? %)]}
   (let [parent (.getParent path)]
     (if parent
       (cons parent (p-parents parent))
@@ -43,29 +45,30 @@
        :c-time (.toInstant creation-time)})))
 
 (defn- stream-dir [max-depth depth dir]
-  {:pre [(int? max-depth) (int? depth) (ip/path? dir)]}
+  {:pre [(int? max-depth) (int? depth) (ip/path? dir)]
+   :post [(ip/stream? %)]}
   (if (>= depth max-depth)
     (Stream/empty)
     (let [que (atom [])
-          st (-> dir
-                 Files/list
-                 (.filter (ip/->pred #(Files/isReadable %)))
-                 (.map (ip/->fn #(let [{:keys [dir?]
-                                        :as parsed} (stat %)]
-                                   (when dir?
-                                     (swap! que conj %))
-                                   parsed)))
-                 Stream/of
-                 (.flatMap (ip/->fn identity)))
+          stream-1 (-> dir
+                       Files/list
+                       (.filter (ip/->pred #(Files/isReadable %)))
+                       (.map (ip/->fn #(let [{:keys [dir?]
+                                              :as parsed} (stat %)]
+                                         (when dir?
+                                           (swap! que conj %))
+                                         parsed)))
+                       Stream/of
+                       (.flatMap (ip/->fn identity)))
           gen (Stream/generate
                (ip/->supp #(let [path (peek @que)]
                              (when-not (nil? path)
                                (swap! que pop))
                              path)))
-          st2 (.. gen
-                  (takeWhile (ip/->pred lib/not-nil?))
-                  (flatMap (ip/->fn (partial stream-dir max-depth (inc depth)))))]
-      (Stream/concat st st2))))
+          stream-2 (.. gen
+                       (takeWhile (ip/->pred lib/not-nil?))
+                       (flatMap (ip/->fn (partial stream-dir max-depth (inc depth)))))]
+      (Stream/concat stream-1 stream-2))))
 
 (defn walk [max-depth root dir]
   {:pre [(int? max-depth) (ip/path? root) (ip/path? dir)]}
@@ -73,7 +76,8 @@
     (.filter (stream-dir max-depth 0 (canonicalize dir)) pred)))
 
 (defn glob [root dir pattern]
-  {:pre [(string? pattern)]}
+  {:pre [(string? pattern)]
+   :post [(ip/stream? %)]}
   (let [fs (.getFileSystem root)
         matcher (->> pattern (str "glob:" dir (.getSeparator fs)) (.getPathMatcher fs))
         pred (ip/->pred (comp #(.matches matcher %) :path))]

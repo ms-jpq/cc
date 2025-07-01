@@ -13,13 +13,13 @@
   {:pre [(ip/path? root) (ip/path? data-dir)]}
   (let [pattern (-> query :q first)
         dir (.resolve root path)
-        st (fs/glob root dir pattern)]
-    {:close st
+        stream (fs/glob root dir pattern)]
+    {:close stream
      :headers idx/html-headers
      :body (h/html
             [:ul
              (for [{:keys [size m-time c-time]
-                    :as row} (ip/->seq st)
+                    :as row} (ip/->seq stream)
                    :let [rel (idx/rel-path root row)]]
                [:li
                 [:a {:href rel} rel]
