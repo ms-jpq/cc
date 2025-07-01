@@ -1,7 +1,8 @@
 (ns lib.interop
   (:import
    [java.nio.file Path]
-   [java.util.stream Stream]))
+   [java.util Spliterator]
+   [java.util.stream Stream StreamSupport]))
 
 (defmacro ->fn [f]
   `(reify java.util.function.Function
@@ -25,12 +26,20 @@
 
 (def stream? (partial instance? Stream))
 
-(defn st->seq [st]
-  {:pre [(stream? st)]}
+(defn stream->seq [st]
+  {:pre [(stream? st)]
+   :post [(seqable? %)]}
   (-> st .iterator iterator-seq))
+
+(defn seq->stream [seq]
+  {:pre [seqable? seq]
+   :post [(stream? %)]}
+  (-> (Spliterator/spliteratorUnknownSize Spliterator/IMMUTABLE)
+      (StreamSupport/stream false)))
 
 (def path? (partial instance? Path))
 
 (defn path [path & paths]
-  {:pre [(string? path)]}
+  {:pre [(string? path)]
+   :post [(path? %)]}
   (Path/of path (into-array String paths)))

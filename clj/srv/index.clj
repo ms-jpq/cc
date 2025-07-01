@@ -29,7 +29,7 @@
      [:main
       [:ul
        (for [{:keys [size m-time c-time]
-              :as row} (ip/st->seq st)
+              :as row} (ip/stream->seq st)
              :let [rel (rel-path current row)]]
          [:li
           [:a {:href rel} rel]
