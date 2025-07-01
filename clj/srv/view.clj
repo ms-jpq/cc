@@ -78,7 +78,7 @@
         {:keys [etag]
          :as hdrs} (when attrs (file-headers attrs))]
     (cond
-      (or (nil? attrs) (-> link (or (ip/path "/")) (.startsWith root)))
+      (or (nil? attrs) (-> link (or (ip/->path "/")) (.startsWith root)))
       {:status 404
        :body "404"}
       dir?

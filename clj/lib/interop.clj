@@ -1,6 +1,7 @@
 (ns lib.interop
   (:import
    [java.nio.file Path]
+   [java.time Duration]
    [java.util Spliterator]
    [java.util.stream Stream StreamSupport]))
 
@@ -24,6 +25,15 @@
      (test [_ arg#]
        (~f arg#))))
 
+(defn ->duration
+  [seconds]
+  {:pre [(number? seconds)]
+   :post [(instance? Duration %)]}
+  (-> seconds
+      (* 1000000000)
+      long
+      Duration/ofNanos))
+
 (def stream? (partial instance? Stream))
 
 (defn stream->seq [st]
@@ -39,7 +49,7 @@
 
 (def path? (partial instance? Path))
 
-(defn path [path & paths]
+(defn ->path [path & paths]
   {:pre [(string? path)]
    :post [(path? %)]}
   (Path/of path (into-array String paths)))

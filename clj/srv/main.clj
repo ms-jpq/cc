@@ -47,7 +47,7 @@
         {{:keys [help port prefix root data]} :options
          summary :summary
          errors :errors} (cli/parse-opts args argp)
-        handler (make-handler prefix (-> root ip/path fs/canonicalize) (ip/path data))]
+        handler (make-handler prefix (-> root ip/->path fs/canonicalize) (ip/->path data))]
     (cond help (log/info summary)
           errors ((doseq [e errors] (log/error e))
                   (System/exit 2))
