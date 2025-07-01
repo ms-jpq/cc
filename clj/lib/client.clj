@@ -1,9 +1,9 @@
 (ns lib.client
   (:require [lib.interop :as ip])
   (:import
-   [java.io InputStream]
    [java.net URI]
    [java.net.http HttpClient Redirect HttpRequest HttpRequest$BodyPublishers]
+   [java.time Duration]
    [java.util.concurrent Executors]))
 
 (defn new-request
@@ -17,13 +17,15 @@
   (let [builder (HttpRequest/newBuilder (URI. url))
         publisher (cond
                     (nil? body) (.nobody HttpRequest$BodyPublishers)
-                    (bytes? body) (.ofByteArray HttpRequest$BodyPublishers (byte-array [body]))
-                    (string? body) (.ofString HttpRequest$BodyPublishers body)
-                    (seqable? body) (->> ip/seq->stream (.ofInputStream HttpRequest$BodyPublishers))
-                    (ip/stream? body) (.ofInputStream HttpRequest$BodyPublishers body))]
+                    (bytes? body) (->> [body] (byte-array) (.ofByteArray HttpRequest$BodyPublishers))
+                    (string? body) (->> body (.ofString HttpRequest$BodyPublishers))
+                    (seqable? body) (->> body (ip/seq->stream) (.ofInputStream HttpRequest$BodyPublishers))
+                    (ip/stream? body) (->> body (.ofInputStream HttpRequest$BodyPublishers)))]
     (doseq [[k v] headers]
       (.header builder (name k) v))
     (.method builder (name method) publisher)
+    (when timeout
+      (->> timeout (Duration/ofSeconds) (.timeout builder)))
     (.build builder)))
 
 (defn new-client
