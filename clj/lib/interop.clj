@@ -36,12 +36,12 @@
 
 (def stream? (partial instance? Stream))
 
-(defn stream->seq [st]
-  {:pre [(stream? st)]
+(defn ->seq [stream]
+  {:pre [(stream? stream)]
    :post [(seqable? %)]}
-  (-> st .iterator iterator-seq))
+  (-> stream .iterator iterator-seq))
 
-(defn seq->stream [seq]
+(defn ->stream [seq]
   {:pre [seqable? seq]
    :post [(stream? %)]}
   (-> (Spliterator/spliteratorUnknownSize Spliterator/IMMUTABLE)

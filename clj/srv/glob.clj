@@ -19,7 +19,7 @@
      :body (h/html
             [:ul
              (for [{:keys [size m-time c-time]
-                    :as row} (ip/stream->seq st)
+                    :as row} (ip/->seq st)
                    :let [rel (idx/rel-path root row)]]
                [:li
                 [:a {:href rel} rel]

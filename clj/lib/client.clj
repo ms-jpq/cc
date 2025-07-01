@@ -1,5 +1,6 @@
 (ns lib.client
-  (:require [lib.interop :as ip])
+  (:require [clojure.datafy :refer [datafy]]
+            [lib.interop :as ip])
   (:import
    [java.net URI]
    [java.net.http HttpClient Redirect HttpRequest HttpRequest$BodyPublishers HttpResponse HttpResponse$BodyHandler HttpResponse$ResponseInfo HttpResponse$BodySubscriber HttpResponse$BodySubscribers]
@@ -18,7 +19,7 @@
                     (nil? body) (.nobody HttpRequest$BodyPublishers)
                     (bytes? body) (->> [body] byte-array (.ofByteArray HttpRequest$BodyPublishers))
                     (string? body) (->> body (.ofString HttpRequest$BodyPublishers))
-                    (seqable? body) (->> body ip/seq->stream (.ofInputStream HttpRequest$BodyPublishers))
+                    (seqable? body) (->> body ip/->stream (.ofInputStream HttpRequest$BodyPublishers))
                     (ip/stream? body) (->> body (.ofInputStream HttpRequest$BodyPublishers)))]
     (doseq [[k v] headers]
       (.header builder (name k) v))
@@ -38,10 +39,9 @@
   [response]
   {:pre [(instance? HttpResponse response)]
    :post [(map? %)]}
-  {:uri (-> response .uri str)
-   :status (.statusCode response)
-   :headers (->> response .headers .map (map (fn [[k v]] [(keyword k) v])) (into {}))
-   :body (.body response)})
+  {:status (-> response .statusCode)
+   :headers (->> response .headers .map (map (fn [[k v]] [(keyword k) (datafy v)])) (into {}))
+   :body (-> response .body ip/->seq)})
 
 (defn new-client
   [exec]
